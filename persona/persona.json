@@ -6,24 +6,25 @@
     "voice_id": "731b4ffe-e95e-59f4-8c00-81608936091f",
     "voice_type": "preset",
     "gender": "female",
-    "preview_url": "https://d1xarpci4ikg0w.cloudfront.net/audio_voice/731b4ffe-e95e-59f4-8c00-81608936091f/preview-37d345ad8f2edf91.mp3"
+    "preview_url": "https://d1xarpci4ikg0w.cloudfront.net/audio_voice/731b4ffe-e95e-59f4-8c00-81608936091f/preview-37d345ad8f2edf91.mp3",
+    "language": "pt-BR"
   },
   "character_reference": {
-    "job_id": "3ef31ac9-10a7-4ff3-92b5-4711f51c29ee",
-    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3IMjRh4yp5Ie5bgUzXTv4ASGWC5/hf_20260830_134749_3ef31ac9-10a7-4ff3-92b5-4711f51c29ee.png",
-    "model": "soul_2",
+    "media_id": "1bce158d-fb59-440a-8c22-05b12ecff807",
+    "source": "user_uploaded",
+    "authorization": "confirmed_ai_generated_not_real_person",
+    "result_url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3IMjRh4yp5Ie5bgUzXTv4ASGWC5/1bce158d-fb59-440a-8c22-05b12ecff807.png",
     "created_at": "2026-08-30"
   },
-  "traits": {
-    "age_band": "mid 20s",
-    "hair": "soft brown, long loose waves, layered blowout finish",
-    "build": "average proportional",
-    "distinctive_feature": "light natural freckles across cheekbones",
-    "makeup": "casual natural",
-    "face_read": "mixed / softly blended features, warm neutral-toned skin",
-    "outfit_register": "clean-minimalist (casual everyday, white crepe top + black culottes, silver accents)",
-    "signature_accessory": "wide brushed-silver cuff bracelet",
-    "tier": "premium / versatile across categories"
+  "previous_reference": {
+    "note": "rejected by user, replaced by user-supplied photo above",
+    "job_id": "3ef31ac9-10a7-4ff3-92b5-4711f51c29ee",
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3IMjRh4yp5Ie5bgUzXTv4ASGWC5/hf_20260830_134749_3ef31ac9-10a7-4ff3-92b5-4711f51c29ee.png"
   },
-  "usage_rule": "Reuse character_reference.job_id as character_media_id in every ugc-review-video generation for every platform, so the same face appears in all videos. After each video renders, run voice_change with voice.voice_id (type=preset) to lock the final spoken voice to Ainsley regardless of the native speech the video model generates."
+  "production_rules": {
+    "language": "pt-BR (sempre, todo roteiro/monologo em portugues do Brasil)",
+    "lip_sync": "obrigatorio em todo video - a modelo sempre fala em cena, nunca narracao off-screen",
+    "voice_lock": "aplicar voice_change com voice_id da Ainsley (voice_type=preset) no video final de cada plataforma"
+  },
+  "usage_rule": "Reuse character_reference.media_id as character_media_id in every ugc-review-video generation for every platform, so the same face appears in all videos. Write every monologue/script in pt-BR. After each video renders (native lip-synced speech from the pt-BR script), run voice_change with voice.voice_id (type=preset) to lock the final spoken voice to Ainsley."
 }
