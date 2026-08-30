@@ -1,0 +1,29 @@
+{
+  "name": "Modelo-UGC-1",
+  "gender": "woman",
+  "voice": {
+    "name": "Ainsley",
+    "voice_id": "731b4ffe-e95e-59f4-8c00-81608936091f",
+    "voice_type": "preset",
+    "gender": "female",
+    "preview_url": "https://d1xarpci4ikg0w.cloudfront.net/audio_voice/731b4ffe-e95e-59f4-8c00-81608936091f/preview-37d345ad8f2edf91.mp3"
+  },
+  "character_reference": {
+    "job_id": "3ef31ac9-10a7-4ff3-92b5-4711f51c29ee",
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3IMjRh4yp5Ie5bgUzXTv4ASGWC5/hf_20260830_134749_3ef31ac9-10a7-4ff3-92b5-4711f51c29ee.png",
+    "model": "soul_2",
+    "created_at": "2026-08-30"
+  },
+  "traits": {
+    "age_band": "mid 20s",
+    "hair": "soft brown, long loose waves, layered blowout finish",
+    "build": "average proportional",
+    "distinctive_feature": "light natural freckles across cheekbones",
+    "makeup": "casual natural",
+    "face_read": "mixed / softly blended features, warm neutral-toned skin",
+    "outfit_register": "clean-minimalist (casual everyday, white crepe top + black culottes, silver accents)",
+    "signature_accessory": "wide brushed-silver cuff bracelet",
+    "tier": "premium / versatile across categories"
+  },
+  "usage_rule": "Reuse character_reference.job_id as character_media_id in every ugc-review-video generation for every platform, so the same face appears in all videos. After each video renders, run voice_change with voice.voice_id (type=preset) to lock the final spoken voice to Ainsley regardless of the native speech the video model generates."
+}
