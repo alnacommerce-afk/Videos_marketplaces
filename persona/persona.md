@@ -20,6 +20,7 @@ Persona (criadora) padrão usada em todos os vídeos UGC dos marketplaces (Merca
 1. Gerar o áudio da fala em pt-BR primeiro: `generate_audio` (`text2speech_v2`, `variant: elevenlabs`, voz Ainsley) a partir do roteiro final já revisado.
 2. Gerar o clipe de vídeo (`seedance_2_5`, `mode: omni_reference`) passando esse áudio como referência (`role: audio_references`), junto com o board e o `character_media_id`, instruindo no prompt que os lábios devem seguir exatamente esse áudio (mesmas palavras, mesmo timing) em vez de gerar fala nova.
 3. Isso substitui a etapa antiga de `voice_change` pós-render, que usava um motor de fala menos fluente em português — usar `voice_change` só como alternativa de emergência se `audio_references` não estiver disponível.
+4. **Conversão de codec obrigatória antes de entregar.** O Higgsfield entrega o vídeo final em HEVC/H.265 — muitos navegadores e apps só tocam o áudio, sem imagem, nesse codec. Sempre baixar o vídeo final via `sandbox_exec`, converter pra H.264 com ffmpeg, subir de novo (`media_upload` + `media_confirm`) e entregar esse link H.264 como o definitivo.
 
 ## Como a consistência é garantida
 

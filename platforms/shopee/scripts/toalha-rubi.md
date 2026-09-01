@@ -34,7 +34,8 @@
 
 - Storyboard (8 cenas, imagem): https://d8j0ntlcm91z4.cloudfront.net/user_3IMjRh4yp5Ie5bgUzXTv4ASGWC5/hf_20260901_152306_f772d61c-e745-4b2b-a252-4423d2172c08.png
 - Áudio final (ElevenLabs, voz Ainsley, pt-BR): https://d8j0ntlcm91z4.cloudfront.net/user_3IMjRh4yp5Ie5bgUzXTv4ASGWC5/hf_20260901_160026_f8daeb24-6d2d-440b-be21-58dc7f8f0eae.mp3
-- **Vídeo final (v2 — áudio ElevenLabs como referência de lip-sync):** https://d8j0ntlcm91z4.cloudfront.net/user_3IMjRh4yp5Ie5bgUzXTv4ASGWC5/hf_20260901_160429_84e43e02-856f-47da-8122-9a8100335f20.mp4
+- Vídeo final v2, bruto do Higgsfield (HEVC/H.265 — pode tocar só áudio em navegadores sem suporte a HEVC): https://d8j0ntlcm91z4.cloudfront.net/user_3IMjRh4yp5Ie5bgUzXTv4ASGWC5/hf_20260901_160429_84e43e02-856f-47da-8122-9a8100335f20.mp4
+- **Vídeo final v2, convertido pra H.264 (compatibilidade universal — usar este):** https://d2ol7oe51mr4n9.cloudfront.net/user_3IMjRh4yp5Ie5bgUzXTv4ASGWC5/a8aaae4b-9fd0-411d-a623-b0f03bca6ae9.mp4
 
 ### Versões anteriores (histórico, não usar)
 
