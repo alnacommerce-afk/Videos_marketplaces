@@ -11,22 +11,30 @@ Persona (criadora) padrão usada em todos os vídeos UGC dos marketplaces (Merca
 ## Regras de produção fixas
 
 - **Idioma: sempre português do Brasil.** Todo roteiro/monólogo é escrito em pt-BR (nunca em inglês, mesmo sendo o default do workflow).
-- **Sincronia labial obrigatória.** A modelo sempre fala em cena, nunca narração em off; a fala nativa do modelo de vídeo é gerada diretamente a partir do roteiro em pt-BR, garantindo lip-sync correto desde a geração.
-- **Voz travada:** depois do vídeo renderizado, roda `voice_change` (voice_id da Ainsley, voice_type=preset) pra garantir que a voz final é sempre a mesma, mantendo timing/visual do vídeo.
+- **Escrita clara, sem ambiguidade.** Evitar armadilhas de leitura em pt-BR — o erro mais comum é escrever dimensões como "80x150" na forma "oitenta por cento e cinquenta" (soa como porcentagem). Preferir "oitenta centímetros de largura por um metro e cinquenta de comprimento". Revisar sempre números, siglas e medidas antes de mandar pro áudio.
+- **Motor de voz travado: ElevenLabs.** Testado A/B com o usuário (ElevenLabs vs. motor padrão/seed_audio) — ElevenLabs soou muito mais fluente e natural em pt-BR. Sempre gerar a fala via `generate_audio` com `model: text2speech_v2`, `variant: elevenlabs`, `voice_type: preset`, `voice_id` da Ainsley.
+- **Sincronia labial obrigatória.** A modelo sempre fala em cena, nunca narração em off.
+
+## Pipeline de voz (atualizado)
+
+1. Gerar o áudio da fala em pt-BR primeiro: `generate_audio` (`text2speech_v2`, `variant: elevenlabs`, voz Ainsley) a partir do roteiro final já revisado.
+2. Gerar o clipe de vídeo (`seedance_2_5`, `mode: omni_reference`) passando esse áudio como referência (`role: audio_references`), junto com o board e o `character_media_id`, instruindo no prompt que os lábios devem seguir exatamente esse áudio (mesmas palavras, mesmo timing) em vez de gerar fala nova.
+3. Isso substitui a etapa antiga de `voice_change` pós-render, que usava um motor de fala menos fluente em português — usar `voice_change` só como alternativa de emergência se `audio_references` não estiver disponível.
 
 ## Como a consistência é garantida
 
 1. **Rosto:** essa mesma imagem de referência (`character_media_id` = media_id acima) é reaproveitada em todos os boards/clipes de todos os vídeos, em todas as plataformas — nunca é regenerada.
-2. **Voz:** primeiro a fala nativa é gerada em pt-BR (pra garantir sincronia labial certa com o português); depois `voice_change` trava o áudio final na voz Ainsley.
+2. **Voz:** o áudio é sempre gerado primeiro via ElevenLabs (voz Ainsley) e o vídeo é gerado lendo os lábios exatamente daquele áudio — garante fluência em pt-BR e a mesma voz sempre.
 
 ## Histórico
 
 - Primeira versão da persona foi gerada por IA internamente e **rejeitada pelo usuário**.
 - Versão atual: foto enviada pelo usuário (`1bce158d-fb59-440a-8c22-05b12ecff807`), confirmada como imagem de IA (não pessoa real).
+- Primeiro vídeo piloto (Toalha Rubi, Shopee) veio com fala pouco fluente/confusa em pt-BR. Causa: (a) frase ambígua no roteiro ("oitenta por cento e cinquenta") e (b) motor de voz padrão do `voice_change` menos natural em português. Corrigido: roteiro reescrito + pipeline trocado pra usar áudio ElevenLabs como referência de lip-sync direto na geração do clipe.
 
 ## Regras de uso
 
 - Sempre passar o `media_id` acima como `character_media_id` ao workflow `ugc-review-video` para qualquer novo vídeo.
-- Sempre escrever o roteiro em português do Brasil.
-- Sempre aplicar `voice_change` com a voz Ainsley no vídeo final antes da entrega.
+- Sempre escrever o roteiro em português do Brasil, revisado contra ambiguidades de leitura.
+- Sempre gerar o áudio via ElevenLabs (voz Ainsley) primeiro e usar como `audio_references` na geração do vídeo.
 - Roteiro muda por plataforma (ver `platforms/<plataforma>/scripts/`), mas rosto, voz e idioma permanecem fixos.

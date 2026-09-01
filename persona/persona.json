@@ -7,7 +7,10 @@
     "voice_type": "preset",
     "gender": "female",
     "preview_url": "https://d1xarpci4ikg0w.cloudfront.net/audio_voice/731b4ffe-e95e-59f4-8c00-81608936091f/preview-37d345ad8f2edf91.mp3",
-    "language": "pt-BR"
+    "language": "pt-BR",
+    "tts_model": "text2speech_v2",
+    "tts_variant": "elevenlabs",
+    "tts_variant_note": "Testado A/B com o usuario (elevenlabs vs seed_audio/default): elevenlabs soou mais fluente e natural em pt-BR. Travado como padrao para todos os videos futuros."
   },
   "character_reference": {
     "media_id": "1bce158d-fb59-440a-8c22-05b12ecff807",
@@ -24,7 +27,9 @@
   "production_rules": {
     "language": "pt-BR (sempre, todo roteiro/monologo em portugues do Brasil)",
     "lip_sync": "obrigatorio em todo video - a modelo sempre fala em cena, nunca narracao off-screen",
-    "voice_lock": "aplicar voice_change com voice_id da Ainsley (voice_type=preset) no video final de cada plataforma"
+    "script_writing": "evitar ambiguidades de leitura em pt-BR, principalmente numeros/dimensoes. Nunca escrever dimensoes como '<numero> por cento e <numero>' (ex: '80x150' virou 'oitenta por cento e cinquenta', que soa como uma porcentagem). Preferir formas naturais tipo 'oitenta centimetros de largura por um metro e cinquenta de comprimento'.",
+    "voice_pipeline": "1) gerar o audio da fala em pt-BR via generate_audio (model=text2speech_v2, variant=elevenlabs, voice_type=preset, voice_id=Ainsley) a partir do roteiro final. 2) gerar o clipe de video (seedance_2_5, mode=omni_reference) passando esse audio como media role 'audio_references', junto com board e character_media_id, instruindo no prompt que os labios devem seguir exatamente esse audio de referencia (mesmas palavras, mesmo timing) em vez de gerar fala nova. Isso elimina a etapa de voice_change pos-render, que usava um motor de fala menos fluente em pt-BR.",
+    "voice_lock_fallback": "Se por algum motivo nao for possivel usar audio_references na geracao do clipe, aplicar voice_change com voice_id da Ainsley (voice_type=preset) no video final como alternativa, mas essa via renderizou pt-BR menos fluente em teste A/B e deve ser evitada quando possivel."
   },
-  "usage_rule": "Reuse character_reference.media_id as character_media_id in every ugc-review-video generation for every platform, so the same face appears in all videos. Write every monologue/script in pt-BR. After each video renders (native lip-synced speech from the pt-BR script), run voice_change with voice.voice_id (type=preset) to lock the final spoken voice to Ainsley."
+  "usage_rule": "Reuse character_reference.media_id as character_media_id in every ugc-review-video generation for every platform, so the same face appears in all videos. Write every monologue/script in clear, unambiguous pt-BR (see script_writing rule). Generate the spoken audio first via text2speech_v2/elevenlabs with the Ainsley voice, then generate the Seedance clip with that audio attached as audio_references so lips sync to that exact fluent track (see voice_pipeline)."
 }
