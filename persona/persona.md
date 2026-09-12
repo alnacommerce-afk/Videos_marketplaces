@@ -8,6 +8,12 @@ Persona (criadora) padrão usada em todos os vídeos UGC dos marketplaces (Merca
 - **Voz padrão (quando NÃO precisa lip-sync, ex: narração em off):** Ainsley (preset, feminina) — `voice_id: 731b4ffe-e95e-59f4-8c00-81608936091f`, motor ElevenLabs (`text2speech_v2`/`variant: elevenlabs`)
   - Preview: https://d1xarpci4ikg0w.cloudfront.net/audio_voice/731b4ffe-e95e-59f4-8c00-81608936091f/preview-37d345ad8f2edf91.mp3
 
+## Regra crítica: nunca inventar característica do produto
+
+O agente **não consegue visualizar** as imagens que o usuário envia (só recebe o `media_id`, sem preview real). Isso já causou erro real: um roteiro descreveu um "sulco nas bordas pra segurar suco" numa tábua de cortar carne que na verdade era lisa e reta, porque o agente assumiu uma característica comum do produto em vez de perguntar.
+
+**Regra:** todo texto de roteiro/locução só pode citar características físicas do produto que o USUÁRIO descreveu por escrito (medidas, material, presença/ausência de detalhes). Nunca assumir características "típicas" da categoria do produto. A imagem de referência serve só pra alimentar o MODELO DE GERAÇÃO de imagem/vídeo (que enxerga a imagem de verdade) — nunca para o agente inventar descrição própria. Na dúvida, perguntar ao usuário antes de escrever o roteiro.
+
 ## Pergunta obrigatória antes de gerar QUALQUER vídeo novo
 
 Sempre perguntar ao usuário: **esse vídeo vai ter a modelo falando em cena (precisa sincronia labial) ou vai ser narração em voz off (sem a modelo falando na câmera)?**
