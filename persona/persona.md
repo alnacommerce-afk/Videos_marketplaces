@@ -5,9 +5,9 @@ Persona (criadora) padrão usada em todos os vídeos UGC dos marketplaces (Merca
 - **Imagem de referência (identidade fixa):** ![Modelo-UGC-1](https://d2ol7oe51mr4n9.cloudfront.net/user_3IMjRh4yp5Ie5bgUzXTv4ASGWC5/1bce158d-fb59-440a-8c22-05b12ecff807.png)
 - **Origem:** foto enviada pelo usuário — confirmado que é imagem gerada por IA (não retrata pessoa real), então sem bloqueio de autorização.
 - **media_id de referência (character_media_id):** `1bce158d-fb59-440a-8c22-05b12ecff807`
-- **Voz padrão (quando NÃO precisa lip-sync, ex: narração em off):** Camilla — voz nativa brasileira (sotaque pt-brazilian, não europeu), gerada **direto pelo conector ElevenLabs do Claude Code** (`creative_generate_speech`, `model_id: eleven_multilingual_v2`, `voice_id: YklVF5l1Q8os8glyd5SM`) — **não** passa pelos créditos da Higgsfield.
-  - Descrição: "Native Brazilian Portuguese female voice, 25–35, neutral Brazilian accent, warm, conversational, charismatic — ideal for UGC, social media."
-  - **Decidido em 23/09**: trocado de Ainsley (Higgsfield/ElevenLabs via Higgsfield) pra Camilla (ElevenLabs direto) por dois motivos — (1) economiza créditos Higgsfield (a locução sai da conta ElevenLabs, não da Higgsfield), (2) o usuário pediu explicitamente uma voz 100% brasileira. **Usar sempre esta voz em todos os próximos vídeos de narração em off.**
+- **Voz padrão (quando NÃO precisa lip-sync, ex: narração em off):** Ainsley (preset, feminina, brasileira) — `voice_id: 731b4ffe-e95e-59f4-8c00-81608936091f`, gerada via Higgsfield (`text2speech_v2`/`variant: elevenlabs`).
+  - Preview: https://d1xarpci4ikg0w.cloudfront.net/audio_voice/731b4ffe-e95e-59f4-8c00-81608936091f/preview-37d345ad8f2edf91.mp3
+  - **Tentativa em 23/09: trocar pra Camilla (voz do ElevenLabs direto, sem gastar crédito Higgsfield) — REVERTIDO.** A conta ElevenLabs conectada aqui não tem plano Creator, então toda voz brasileira feminina de qualidade da biblioteca do ElevenLabs (Camilla incluída) dá erro "creator tier or above". A única voz brasileira liberada sem custo extra era masculina (quebra a consistência de gênero). Decisão do usuário: manter Ainsley — já é brasileira e o custo (~0,75-0,9 crédito por vídeo) não é o que pesa no saldo.
 
 ## Regra crítica: nunca inventar característica do produto
 
@@ -31,7 +31,7 @@ Isso muda o pipeline:
 ### B) Narração em voz off (sem a modelo falando na câmera)
 
 - A modelo pode aparecer em cena (mostrando o produto, expressões, gestos) mas sem falar / sem boca em foco falando — boca sempre fechada ou sorrindo, nunca "mid-speech" no storyboard/vídeo.
-- Gerar o áudio à parte via **ElevenLabs direto** (`mcp__ElevenLabs__creative_generate_speech`, `voice_id: YklVF5l1Q8os8glyd5SM` — Camilla), não via Higgsfield (economiza crédito Higgsfield).
+- Gerar o áudio à parte via Higgsfield (`generate_audio`, `text2speech_v2`, `variant: elevenlabs`, voz Ainsley).
 - Depois: gerar o vídeo **silencioso** no Higgsfield (`generate_audio: false`), baixar os dois, mixar com ffmpeg (sandbox), converter pra H.264, entregar.
 - Workflow mais adequado nesse caso: `ugc-product-video` (produto é o foco, sem lip-sync) em vez de `ugc-review-video`.
 
@@ -44,7 +44,7 @@ Isso muda o pipeline:
 ## Como a consistência é garantida
 
 1. **Rosto:** essa mesma imagem de referência (`character_media_id` = media_id acima) é reaproveitada em todos os boards/clipes de todos os vídeos, em todas as plataformas — nunca é regenerada.
-2. **Voz:** depende do modo (ver seção acima). Narração em off = sempre Camilla via ElevenLabs direto, 100% consistente e brasileira. Modelo falando em cena = voz nativa do Seedance por vídeo (pode variar levemente entre renders), priorizando sincronia labial correta.
+2. **Voz:** depende do modo (ver seção acima). Narração em off = sempre Ainsley (Higgsfield/ElevenLabs), 100% consistente e brasileira. Modelo falando em cena = voz nativa do Seedance por vídeo (pode variar levemente entre renders), priorizando sincronia labial correta.
 
 ## Histórico
 
@@ -60,4 +60,4 @@ Isso muda o pipeline:
 - Sempre passar o `media_id` acima como `character_media_id` ao workflow `ugc-review-video` para qualquer novo vídeo.
 - Sempre escrever o roteiro em português do Brasil, revisado contra ambiguidades de leitura.
 - Sempre perguntar antes de gerar: modelo fala em cena (lip-sync) ou narração em off (voz ElevenLabs travada)?
-- Roteiro muda por plataforma (ver `platforms/<plataforma>/scripts/`), mas rosto e idioma permanecem fixos; a voz é fixa (Camilla, ElevenLabs direto) só no modo narração em off.
+- Roteiro muda por plataforma (ver `platforms/<plataforma>/scripts/`), mas rosto e idioma permanecem fixos; a voz é fixa (Ainsley) só no modo narração em off.
