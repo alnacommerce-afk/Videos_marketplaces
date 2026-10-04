@@ -875,7 +875,7 @@ class TestBroll(unittest.TestCase):
         val = load_json(job / "validation.json")
         names = {c["name"]: c for c in val["checks"]}
         for k in ("b-roll: ilustra só um uso confirmado e tem origem registrada", 'b-roll: rótulo "Imagem ilustrativa" visível',
-                  "b-roll: sem crianças nas tags"):
+                  "b-roll: sem crianças nas tags (exceto uso infantil confirmado, nunca em close)"):
             self.assertTrue(names[k]["ok"], names[k])
         self.assertIn("Autor-C", (job / "creditos.txt").read_text(encoding="utf-8"))
         self.assertTrue((TMP / "out-broll" / "2026-07-01" / "_auditoria" / res["final_name"] / "creditos.txt").exists())
