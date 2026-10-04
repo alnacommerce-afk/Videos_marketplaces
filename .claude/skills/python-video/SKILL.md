@@ -23,6 +23,10 @@ Mentalidade: diretor de criação + redator + diretor de fotografia + motion des
 5. **Voz única da marca.** Uma só `ELEVENLABS_VOICE_ID`, travada em `config/voice.lock.json`; trocar exige decisão explícita.
 6. **Música só com licença.** Pasta `music/` = o que *você* licenciou. Sem arquivos, a trilha é sintetizada (original, sem copyright).
 
+## Regra de trabalho: onde as coisas rodam
+
+**Tudo que depende de dado real (loja, Pixabay, Google Drive, vídeos de verdade) roda no computador do usuário (Windows).** O Claude escreve e testa o código na nuvem, com servidores simulados e clipes sintéticos, mas **não dá como resultado real** nada que só tenha rodado lá: entrega o comando para rodar no PC e analisa o que o usuário trouxer (prints, `video.contact.jpg`, `creditos.txt`, logs). Atualizações viajam por ZIP ou `git pull` + `robocopy`.
+
 ## Fluxo
 
 ```
@@ -118,7 +122,7 @@ Cortes curtos (≈2–3 s) de vídeo livre que **ilustram um uso que a loja já 
 ```
 ..\.venv\Scripts\python.exe build_video.py --slug toalha-de-capivara-70x130-200g --demo --voice off
 ```
-Gera um vídeo que **alterna fotos reais do produto e até 3 clipes do Pixabay** (arquétipo `DEMO_MIX`: clipe → foto do produto → detalhe → clipe com o texto do uso → detalhe → clipe → CTA), com efeitos sonoros nas trocas e textos animados. A busca usa "produto + tema" (ex.: `towel beach`) para trazer **pessoas usando um produto parecido**. Sai em `teste\AAAA-MM-DD\` (dentro da pasta da skill), nunca no Drive.
+Gera um vídeo que **alterna fotos reais do produto e até 3 clipes do Pixabay** (arquétipo `DEMO_MIX`: clipe → foto do produto → detalhe → clipe com o texto do uso → detalhe → clipe → CTA), com efeitos sonoros nas trocas e textos animados. A busca junta candidatos de várias consultas (`towel beach`, `person towel`, `beach person`...) e escolhe o **mais próximo do produto**: pontua o tipo do produto nas tags (toalha→`towel`, +4), o material confirmado (algodão→`cotton`, +1), o tema do uso (+3), pessoa aparecendo (+2) e a popularidade; abaixo de 3 pontos nenhum clipe serve. A pontuação e as tags escolhidas ficam em `creditos.txt`. Sai em `teste\AAAA-MM-DD\` (dentro da pasta da skill), nunca no Drive.
 - **Só para avaliação.** O clipe mostra um produto *parecido*, não o da loja: toda cena de clipe leva "Imagem ilustrativa" e o `creditos.txt` registra "MODO DEMONSTRAÇÃO". Antes de publicar algo assim, decida com a política de cada marketplace e a regra de publicidade do consumidor.
 - **A rotina diária nunca usa o modo demo:** ela mantém 1 clipe, bloqueia produto parecido e crianças, e o `DEMO_MIX` só é elegível com ≥ 2 clipes.
 - Cena de clipe sem texto é permitida (o clipe aponta, em `clip.fact_id`, o fato de uso que o justifica; o gate confere). Só um clipe por vídeo leva o texto do fato de uso.

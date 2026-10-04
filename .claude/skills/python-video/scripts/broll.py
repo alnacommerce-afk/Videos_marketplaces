@@ -45,6 +45,57 @@ PRODUCT_WORDS_EN = {"toalha": ["towel"], "tabua": ["cutting board", "board"], "c
                     "camiseta": ["shirt"], "legging": ["legging"], "bolsa": ["bag"], "copo": ["cup", "glass"]}
 
 
+# Termos em inglês para medir PROXIMIDADE entre um clipe e o produto (nome + material confirmado). Só ranqueiam clipes;
+# nada disto vira texto ou afirmação.
+SIMILARITY_TYPE = {"toalha": ["towel", "bath towel", "beach towel"], "banho": ["bath", "bathroom"], "camiseta": ["t-shirt", "shirt"],
+                   "top": ["crop top", "sportswear", "activewear"], "legging": ["leggings"], "tabua": ["cutting board", "chopping board"],
+                   "colher": ["spoon", "wooden spoon"], "rolo": ["rolling pin"], "massa": ["dough"], "faca": ["knife"],
+                   "panela": ["pot", "pan"], "copo": ["cup", "glass"], "bolsa": ["bag"]}
+SIMILARITY_MATERIAL = {"algodao": ["cotton"], "poliester": ["polyester"], "elastano": ["spandex", "stretch"],
+                       "microfibra": ["microfiber"], "madeira": ["wood", "wooden"], "bambu": ["bamboo"], "silicone": ["silicone"]}
+PEOPLE_TAGS = {"woman", "man", "person", "people", "couple", "female", "male", "lady", "adult", "athlete"}
+
+
+def similarity_terms(brief: dict) -> dict:
+    """primary = o que o produto É (tipo, do nome); extra = material (do nome ou de fatos de material utilizáveis)."""
+    primary, extra = [], []
+    toks = re.findall(r"[a-z]+", _norm(brief["product"]["name"]))
+    for f in brief["confirmed_facts"]:
+        if f["usable"] and f["kind"] == "material":
+            toks += re.findall(r"[a-z]+", _norm(f["text"]))
+    for tok in toks:
+        for t in SIMILARITY_TYPE.get(tok, []):
+            if t not in primary:
+                primary.append(t)
+        for t in SIMILARITY_MATERIAL.get(tok, []):
+            if t not in extra:
+                extra.append(t)
+    return {"primary": primary, "extra": extra}
+
+
+def score_hit(h: dict, idx: int, n: int, rank: dict) -> tuple[float, list[str]]:
+    tags = {t.strip().lower() for t in (h.get("tags") or "").split(",") if t.strip()}
+    tag_text = " ".join(tags)
+    score, matched = 0.0, []
+    sim = rank.get("sim") or {}
+    prim = [t for t in sim.get("primary", []) if re.search(rf"\b{re.escape(t)}", tag_text)]
+    if prim:
+        score += 4
+        matched += prim[:2]
+    ext = [t for t in sim.get("extra", []) if re.search(rf"\b{re.escape(t)}", tag_text)]
+    score += min(len(ext), 2)
+    matched += ext[:2]
+    thm = [w for w in rank.get("theme_words", []) if re.search(rf"\b{re.escape(w)}", tag_text)]
+    if thm:
+        score += 3
+        matched += thm[:2]
+    if rank.get("people") and tags & PEOPLE_TAGS:
+        score += 2
+        matched.append("pessoa")
+    score += (n - idx) / max(n, 1)  # leve preferência pela popularidade (a API já ordena)
+    return round(score, 2), matched
+
+
 def _norm(s: str) -> str:
     return unicodedata.normalize("NFKD", s.lower()).encode("ascii", "ignore").decode()
 
@@ -74,11 +125,14 @@ def conflict_words(brief: dict) -> set[str]:
     return words
 
 
-def choose_hit(hits: list[dict], conflicts: set[str], cfg: dict, skip_ids: set | frozenset = frozenset()) -> dict | None:
-    """Primeiro hit que passa nos filtros (a API já devolve por popularidade)."""
+def choose_hit(hits: list[dict], conflicts: set[str], cfg: dict, skip_ids: set | frozenset = frozenset(),
+               rank: dict | None = None) -> dict | None:
+    """Sem `rank`: primeiro hit que passa nos filtros (rotina diária). Com `rank` ({sim, theme_words, people, min_score}):
+    entre os que passam nos filtros, o de MAIOR proximidade com o produto/tema; abaixo de `min_score` nenhum serve."""
     b = cfg["broll"]
     avoid = {t.lower() for t in b["avoid_tags"]}
-    for h in hits:
+    ok = []
+    for idx, h in enumerate(hits):
         if h.get("id") in skip_ids:
             continue
         tags = {t.strip().lower() for t in (h.get("tags") or "").split(",")}
@@ -97,9 +151,16 @@ def choose_hit(hits: list[dict], conflicts: set[str], cfg: dict, skip_ids: set |
             continue
         if any(re.search(rf"\b{re.escape(w)}", tag_text) for w in conflicts):
             continue
-        return {"hit": h, "rendition": {"url": rend["url"], "width": rend["width"], "height": rend["height"],
+        cand = {"hit": h, "rendition": {"url": rend["url"], "width": rend["width"], "height": rend["height"],
                                          "size": rend.get("size", 0), "name": "large" if rend is big else "medium"}}
-    return None
+        if rank is None:
+            return cand
+        cand["score"], cand["matched"] = score_hit(h, idx, len(hits), rank)
+        ok.append(cand)
+    if not ok:
+        return None
+    best = max(ok, key=lambda c: c["score"])  # max devolve o primeiro em caso de empate
+    return best if best["score"] >= rank.get("min_score", 0) else None
 
 
 def search_pixabay(http, key: str, query: str, lang: str, cfg: dict) -> list[dict]:
@@ -144,11 +205,24 @@ def prepare_broll(brief: dict, cfg: dict, logger: Logger, offline: bool = False)
             break
         try:
             picked = None
-            queries = ([("en", f"{prod_en} {t['queries'][1][1]}")] if (demo and prod_en) else []) + t["queries"]
-            for lang, q in queries:
-                picked = choose_hit(search_pixabay(http, key, q, lang, cfg), conflicts, cfg, used_ids)
-                if picked:
-                    break
+            theme_en = t["queries"][1][1]
+            if demo:
+                # DEMO: junta candidatos de várias buscas (produto+tema, pessoa+produto, pessoa+tema) e escolhe o MAIS PRÓXIMO do produto
+                queries = ([("en", f"{prod_en} {theme_en}"), ("en", f"person {prod_en}")] if prod_en else []) + [("en", f"{theme_en} person")] + t["queries"]
+                cands, seen = [], set()
+                for lang, q in queries:
+                    for h in search_pixabay(http, key, q, lang, cfg):
+                        if h.get("id") not in seen:
+                            seen.add(h.get("id"))
+                            cands.append(h)
+                rank = {"sim": similarity_terms(brief), "theme_words": [w for w in re.split(r"[ ,]+", theme_en) if w],
+                        "people": True, "min_score": 3}
+                picked = choose_hit(cands, conflicts, cfg, used_ids, rank)
+            else:
+                for lang, q in t["queries"]:
+                    picked = choose_hit(search_pixabay(http, key, q, lang, cfg), conflicts, cfg, used_ids)
+                    if picked:
+                        break
             if not picked:
                 logger.info("nenhum clipe adequado", tema=t["theme"])
                 continue
@@ -158,8 +232,10 @@ def prepare_broll(brief: dict, cfg: dict, logger: Logger, offline: bool = False)
             out.append({"theme": t["theme"], "fact_id": t["fact_id"], "path": str(path), "provider": "pixabay",
                         "id": h["id"], "page_url": h.get("pageURL", ""), "user": h.get("user", ""), "tags": h.get("tags", ""),
                         "duration": h.get("duration"), "width": rend["width"], "height": rend["height"],
-                        "rendition": rend["name"], "sha256": sha256_file(path), "fetched_at": iso()})
-            logger.info("clipe de ambiente escolhido", tema=t["theme"], id=h["id"], autor=h.get("user"))
+                        "rendition": rend["name"], "sha256": sha256_file(path), "fetched_at": iso(),
+                        **({"similarity": {"score": picked["score"], "matched": picked["matched"]}} if "score" in picked else {})})
+            logger.info("clipe de ambiente escolhido", tema=t["theme"], id=h["id"], autor=h.get("user"),
+                        similaridade=picked.get("score"), tags=h.get("tags"))
         except Exception as e:  # b-roll é opcional
             logger.warn("b-roll indisponível: o vídeo segue só com as fotos", tema=t["theme"], erro=str(e)[:160])
     return out
@@ -172,5 +248,7 @@ def credits_text(sb: dict) -> str:
     for s in sb["scenes"]:
         c = s.get("clip")
         if c:
-            lines.append(f"- Cena {s['index']}: vídeo de {c['user']} via Pixabay (id {c['id']}) — {c['page_url']}")
+            sim = c.get("similarity")
+            extra = f" | proximidade {sim['score']} ({', '.join(sim['matched'])})" if sim else ""
+            lines.append(f"- Cena {s['index']}: vídeo de {c['user']} via Pixabay (id {c['id']}) — {c['page_url']} | tags: {c.get('tags', '')}{extra}")
     return "\n".join(lines) + "\n" if len(lines) > 1 else ""

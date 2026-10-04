@@ -566,9 +566,9 @@ class TestBroll(unittest.TestCase):
              "videos": {"large": rend("land4k", 3840, 2160), "medium": rend("land", 1920, 1080)}},
             {"id": 2, "pageURL": "https://pixabay.com/videos/id-2/", "tags": "beach, towel, sand", "duration": 8, "user": "Autor-B",
              "videos": {"large": rend("land4k", 3840, 2160, False), "medium": rend("land", 1920, 1080)}},
-            {"id": 3, "pageURL": "https://pixabay.com/videos/id-3/", "tags": "beach, sea, waves", "duration": 8, "user": "Autor-C",
+            {"id": 3, "pageURL": "https://pixabay.com/videos/id-3/", "tags": "beach, sea, waves, pool", "duration": 8, "user": "Autor-C",
              "videos": {"large": rend("land4k", 3840, 2160), "medium": rend("land", 1920, 1080)}},
-            {"id": 4, "pageURL": "https://pixabay.com/videos/id-4/", "tags": "beach, sunset", "duration": 8, "user": "Autor-D",
+            {"id": 4, "pageURL": "https://pixabay.com/videos/id-4/", "tags": "beach, sunset, gym", "duration": 8, "user": "Autor-D",
              "videos": {"large": rend("port", 1080, 1920), "medium": rend("port", 1080, 1920)}},
         ]
 
@@ -746,6 +746,21 @@ class TestBroll(unittest.TestCase):
         self.assertEqual([i["theme"] for i in out], ["praia", "piscina", "academia"])
         self.assertEqual(self.calls[0]["q"], "towel beach", "demo busca o produto + tema (pessoas usando)")
         self.assertTrue(all(i["fact_id"] == out[0]["fact_id"] for i in out), "todo clipe aponta o fato de uso que o justifica")
+
+    def test_demo_ranks_by_closeness_to_the_product(self):
+        mk = lambda i, tags: {"id": i, "tags": tags, "duration": 8, "videos": {"large": {"url": "", "width": 0}, "medium": {"url": f"u{i}", "width": 1920, "height": 1080}}}
+        brief = fake_brief_with_use("Ideal para praia", "Toalha de Banho Algodão")
+        brief["confirmed_facts"].append({"id": "fx", "kind": "material", "text": "Composição: algodão", "usable": True, "display": "x"})
+        sim = self.broll.similarity_terms(brief)
+        self.assertIn("towel", sim["primary"])
+        self.assertIn("cotton", sim["extra"])
+        rank = {"sim": sim, "theme_words": ["beach"], "people": True, "min_score": 3}
+        hits = [mk(1, "beach, sea"), mk(2, "beach, woman"), mk(3, "beach, towel, woman, cotton"), mk(4, "forest, tree")]
+        best = self.broll.choose_hit(hits, set(), self.cfg, rank=rank)
+        self.assertEqual(best["hit"]["id"], 3, "o clipe mais próximo (toalha + praia + pessoa + algodão) vence, não o primeiro")
+        self.assertIn("towel", best["matched"])
+        self.assertEqual(self.broll.choose_hit([mk(4, "forest, tree")], set(), self.cfg, rank=rank), None, "sem relação com produto/tema: nenhum serve")
+        self.assertEqual(self.broll.choose_hit(hits, set(), self.cfg)["hit"]["id"], 1, "rotina diária (sem ranking): primeiro que passa")
 
     def _brief_with_clips(self, n=3):
         brief, use = self._brief_with_clip()

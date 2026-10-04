@@ -300,7 +300,7 @@ def build_storyboard(brief: dict, cfg: dict, archetype: str, seed: int | None = 
                 csfx.append({"type": beat["sfx"], "at": 0.0})
             if tr in SFX_FOR_TRANSITION and tw:
                 csfx.append({"type": SFX_FOR_TRANSITION[tr], "at": round(-tw * 0.8, 2)})
-            keep = ("theme", "fact_id", "path", "provider", "id", "page_url", "user", "tags", "duration", "width", "height", "rendition", "sha256")
+            keep = ("theme", "fact_id", "path", "provider", "id", "page_url", "user", "tags", "duration", "width", "height", "rendition", "sha256", "similarity")
             scenes.append({
                 "index": i + 1, "role": beat["role"], "start": round(t, 3), "duration": round(dur, 3),
                 "image_index": None, "image": None, "image_sha256": None,
