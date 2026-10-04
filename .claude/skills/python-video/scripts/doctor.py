@@ -192,7 +192,27 @@ def check_task():
         "" if ok else "Se estiver Disabled: Enable-ScheduledTask -TaskName " + name)
 
 
-def check_last_runs():
+def check_last_runs(cfg):
+    """Fonte de verdade = estado por vídeo (work/state.json), não o resumo da execução (que pode ser de uma rodada sem nada a fazer)."""
+    from common import work_dir
+    target = cfg["daily"]["videos"]
+    st = work_dir(cfg) / "state.json"
+    if st.exists():
+        days = json.loads(st.read_text(encoding="utf-8")).get("days", {})
+        if days:
+            day = max(days)
+            slots = days[day].get("slots", {})
+            done = [s for s in slots.values() if s.get("status") == "READY" and s.get("delivered")]
+            pend = [s for s in slots.values() if s.get("status") == "READY" and not s.get("delivered")]
+            age = (dt.date.today() - dt.date.fromisoformat(day)).days
+            names = ", ".join(s.get("final_name", "?") for s in done)
+            ok = len(done) >= target and age <= 1
+            detail = f"{day}: {len(done)}/{target} vídeos prontos e entregues" + (f" ({names})" if names else "")
+            if pend:
+                detail += f"; {len(pend)} pronto(s) aguardando cópia para a pasta final"
+            add("OK" if ok else "AVISO", "Última rotina", detail,
+                "" if ok else "Veja logs\\daily-*.json e o arquivo .jsonl do dia; a pasta do dia no Drive mostra o que existe")
+            return
     files = sorted(logs_dir().glob("daily-*.json"))
     if not files:
         add("AVISO", "Última rotina", "ainda não rodou")
@@ -231,7 +251,7 @@ def main(argv=None) -> int:
     a = ap.parse_args(argv)
     cfg = load_config()
     check_python(); check_packages(); check_ffmpeg(); check_fonts(cfg); check_dirs(cfg)
-    check_store(cfg, a.offline); check_voice(cfg); check_music(cfg); check_notify(); check_broll(cfg); check_task(); check_last_runs()
+    check_store(cfg, a.offline); check_voice(cfg); check_music(cfg); check_notify(); check_broll(cfg); check_task(); check_last_runs(cfg)
     if a.smoke and not any(r[0] == "FALHA" and r[1] in ("FFmpeg", "ffmpeg", "ffprobe", "Fonte") for r in ROWS):
         smoke(cfg)
     icons = {"OK": "OK   ", "AVISO": "AVISO", "FALHA": "FALHA"}

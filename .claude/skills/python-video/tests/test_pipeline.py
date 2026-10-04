@@ -231,6 +231,23 @@ class TestOps(unittest.TestCase):
         self.assertEqual(rc, 0, doctor.ROWS)
         self.assertTrue(any(r[1] == "FFmpeg" and r[0] == "OK" for r in doctor.ROWS))
 
+    def test_doctor_reads_real_state_not_the_overwritten_summary(self):
+        import datetime as dt
+        import doctor
+        from common import logs_dir, work_dir
+        cfg = load_config()
+        today = dt.date.today().isoformat()
+        save_json(work_dir(cfg) / "state.json", {"days": {today: {"slots": {
+            "1": {"status": "READY", "delivered": True, "final_name": "video_01_a"},
+            "2": {"status": "READY", "delivered": True, "final_name": "video_02_b"},
+            "3": {"status": "READY", "delivered": True, "final_name": "video_03_c"}}}}})
+        save_json(logs_dir() / f"daily-{today}.json", {"day": today, "target": 3, "ready": 0, "note": "sobrescrito pela versão antiga"})
+        doctor.ROWS.clear()
+        doctor.check_last_runs(cfg)
+        lvl, name, detail, _ = doctor.ROWS[-1]
+        self.assertEqual((lvl, name), ("OK", "Última rotina"))
+        self.assertIn("3/3", detail)
+
     def test_notify_format_and_channels(self):
         import notify
         summ = {"day": "2026-01-01", "ready": 2, "target": 3, "late": True,
