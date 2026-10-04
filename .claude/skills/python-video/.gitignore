@@ -1,0 +1,8 @@
+logs/*
+!logs/.gitkeep
+work/
+cache/
+output/
+__pycache__/
+*.pyc
+config/voice.lock.json

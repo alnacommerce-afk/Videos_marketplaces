@@ -1,0 +1,149 @@
+{
+  "format": "9x16",
+  "formats": {
+    "9x16": {
+      "width": 1080,
+      "height": 1920,
+      "fps": 30,
+      "safe": {
+        "top": 250,
+        "bottom": 480,
+        "left": 64,
+        "right": 150
+      }
+    },
+    "4x5": {
+      "width": 1080,
+      "height": 1350,
+      "fps": 30,
+      "safe": {
+        "top": 120,
+        "bottom": 200,
+        "left": 64,
+        "right": 64
+      }
+    },
+    "1x1": {
+      "width": 1080,
+      "height": 1080,
+      "fps": 30,
+      "safe": {
+        "top": 90,
+        "bottom": 140,
+        "left": 64,
+        "right": 64
+      }
+    },
+    "16x9": {
+      "width": 1920,
+      "height": 1080,
+      "fps": 30,
+      "safe": {
+        "top": 80,
+        "bottom": 140,
+        "left": 120,
+        "right": 120
+      }
+    }
+  },
+  "duration": {
+    "min": 15.0,
+    "max": 18.0,
+    "target": 16.5
+  },
+  "paths": {
+    "output_dir_windows": "G:\\Meu Drive\\DRIVE - COMPUTADOR\\MARKETING\\Videos do Pyton",
+    "output_dir_other": "output",
+    "music_dir": "music",
+    "fonts_dir": "fonts",
+    "work_dir": "work",
+    "cache_dir": "cache"
+  },
+  "store": {
+    "base_url": "https://store.alna.sale",
+    "list_path": "/loja",
+    "min_delay_s": 1.5,
+    "timeout_s": 25,
+    "cache_ttl_hours": 24,
+    "max_products": 60,
+    "max_images": 8,
+    "user_agent": "ALNA-VideoBot/1.0 (+uso interno; leitura da propria loja)",
+    "json_endpoint": null
+  },
+  "daily": {
+    "videos": 3,
+    "start_time": "02:00",
+    "recovery_time": "05:00",
+    "deadline": "08:00",
+    "cooldown_days": 10,
+    "max_attempts_per_slot": 3,
+    "min_facts": 1
+  },
+  "brand": {
+    "name": "ALNA",
+    "cta_options": [
+      "Confira na loja ALNA",
+      "Compre na ALNA",
+      "Conheça a coleção ALNA"
+    ],
+    "question_template": "Já conhece {name}?",
+    "show_price": false,
+    "cta_by_pace": {
+      "fast": "Compre na ALNA",
+      "medium": "Confira na loja ALNA",
+      "slow": "Conheça a coleção ALNA"
+    }
+  },
+  "fonts": {
+    "priority": [
+      "Inter",
+      "Montserrat",
+      "Poppins",
+      "Manrope",
+      "DM Sans",
+      "Archivo",
+      "Roboto",
+      "Segoe UI",
+      "Arial",
+      "Liberation Sans",
+      "DejaVu Sans"
+    ],
+    "system_dirs": [
+      "C:/Windows/Fonts",
+      "/usr/share/fonts",
+      "/usr/local/share/fonts",
+      "~/.fonts",
+      "~/Library/Fonts",
+      "/Library/Fonts"
+    ]
+  },
+  "audio": {
+    "sample_rate": 48000,
+    "music_gain_db": -17.0,
+    "duck_db": -14.0,
+    "sfx_gain_db": -9.0,
+    "voice_gain_db": 0.0,
+    "fade_in_s": 0.4,
+    "fade_out_s": 1.2,
+    "loudnorm": {
+      "I": -14.0,
+      "TP": -1.5,
+      "LRA": 11.0
+    }
+  },
+  "elevenlabs": {
+    "api_key_env": "ELEVENLABS_API_KEY",
+    "voice_id_env": "ELEVENLABS_VOICE_ID",
+    "model_id": "eleven_multilingual_v2",
+    "language_code": "pt",
+    "stability": 0.5,
+    "similarity_boost": 0.8,
+    "style": 0.2,
+    "output_format": "mp3_44100_128"
+  },
+  "encode": {
+    "crf": 18,
+    "preset": "medium",
+    "audio_bitrate": "192k"
+  }
+}

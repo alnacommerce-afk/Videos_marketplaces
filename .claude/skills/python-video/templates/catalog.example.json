@@ -1,0 +1,17 @@
+{
+  "_doc": "Formato do catálogo manual (--catalog). Use quando o site não puder ser lido. Só coloque em 'facts' o que você CONFIRMOU por escrito. 'kind' ∈ material|dimension|quantity|color|variation|use|characteristic|contents|gift|problem|before|after|comparison|price. 'images' são caminhos locais ou URLs.",
+  "products": [
+    {
+      "id": "exemplo-001",
+      "name": "NOME DO PRODUTO",
+      "category": "casa",
+      "url": "https://store.alna.sale/produto/exemplo-001",
+      "images": ["fotos/exemplo-001-1.jpg", "fotos/exemplo-001-2.jpg"],
+      "description": "Texto completo do anúncio, exatamente como publicado.",
+      "facts": [
+        {"kind": "dimension", "text": "80 x 150 cm"},
+        {"kind": "material", "text": "100% algodão"}
+      ]
+    }
+  ]
+}

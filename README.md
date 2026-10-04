@@ -29,3 +29,7 @@ Ver `persona/persona.md` — rosto e voz fixos, reaproveitados em todo vídeo no
 ## Status
 
 Persona criada. Aguardando: políticas de cada plataforma e o primeiro produto para gerar o vídeo piloto.
+
+## Pipeline alternativo sem IA generativa: `python-video`
+
+Em `.claude/skills/python-video/` há um pipeline **independente** (Python + FFmpeg) que monta vídeos comerciais 9:16 de 15–18 s com as fotos reais dos produtos da loja ALNA, sem gastar crédito de IA generativa. Ele não usa `persona/` nem `platforms/`. Veja `.claude/skills/python-video/SKILL.md`.

@@ -1,0 +1,471 @@
+"""Testes do pipeline python-video.
+
+  python tests/test_pipeline.py            # tudo (renderiza vídeos reais; ~3–5 min)
+  python tests/test_pipeline.py --fast     # só testes rápidos (sem render)
+
+Nenhum teste usa a internet nem credenciais: a loja é simulada por um servidor HTTP local, e a locução
+do ElevenLabs por uma voz sintética falsa (só para exercitar ducking/retime/sincronia).
+"""
+from __future__ import annotations
+
+import copy
+import http.server
+import json
+import os
+import shutil
+import sys
+import tempfile
+import threading
+import unittest
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE.parent / "scripts"))
+
+import numpy as np  # noqa: E402
+
+FAST = "--fast" in sys.argv
+if FAST:
+    sys.argv.remove("--fast")
+
+TMP = Path(tempfile.mkdtemp(prefix="pyvideo-test-"))
+os.environ.update({"ALNA_OUTPUT_DIR": str(TMP / "out"), "ALNA_WORK_DIR": str(TMP / "work"),
+                   "ALNA_CACHE_DIR": str(TMP / "cache"), "ALNA_LOGS_DIR": str(TMP / "logs")})
+
+import audio as A  # noqa: E402
+import product_fetcher as pf  # noqa: E402
+import storyboard as SB  # noqa: E402
+import validator as V  # noqa: E402
+from build_video import build_video  # noqa: E402
+from common import (Logger, PipelineError, ffprobe_json, load_archetypes, load_config, load_json, save_json)  # noqa: E402
+from fixtures import make_catalog, make_photo  # noqa: E402
+
+LOG = Logger("test", echo=False)
+
+
+def cfg_fast_fps() -> dict:
+    cfg = load_config()
+    cfg["formats"]["9x16"]["fps"] = 15  # metade dos quadros => testes mais rápidos; as regras são as mesmas
+    return cfg
+
+
+def fake_speech(text: str, sr: int) -> np.ndarray:
+    """Voz 'de mentira': rajadas de tom com envelope silábico (só para testar ducking/tempo)."""
+    dur = 0.35 + 0.055 * len(text)
+    t = np.arange(int(dur * sr)) / sr
+    env = (0.5 + 0.5 * np.sin(2 * np.pi * 4.2 * t)) ** 0.7 * np.minimum(t / 0.05, 1) * np.minimum((dur - t) / 0.08, 1)
+    x = sum(np.sin(2 * np.pi * 190 * k * t) / k for k in range(1, 6)) * env * 0.4
+    return np.stack([x, x], axis=1).astype(np.float32)
+
+
+class FakeVoice:
+    def __enter__(self):
+        self.o = (A.voice_settings, A.tts_elevenlabs, A.decode_audio)
+        A.voice_settings = lambda cfg: ("k", "voz-teste")
+        def tts(text, cfg, cache, logger, allow=False):
+            p = TMP / f"fake-{abs(hash(text)) % 10**8}.npy"
+            np.save(p, fake_speech(text, cfg["audio"]["sample_rate"]))
+            return p
+        A.tts_elevenlabs = tts
+        A.decode_audio = lambda p, sr: np.load(p) if str(p).endswith(".npy") else self.o[2](p, sr)
+        import build_video as BV
+        self.bv = (BV.A.tts_elevenlabs, BV.A.decode_audio, BV.A.voice_settings)
+        return self
+
+    def __exit__(self, *a):
+        A.voice_settings, A.tts_elevenlabs, A.decode_audio = self.o
+
+
+# ----------------------------------------------------------------------------
+class TestFacts(unittest.TestCase):
+    def test_classify_and_risk(self):
+        raw = {"name": "X", "description": "Medidas: 30 x 40 cm\nMaterial: algodão\nGarantia vitalícia contra defeitos\nO melhor do mercado\nIdeal para o dia a dia.",
+               "attributes": [], "price": {"value": "49.9", "currency": "BRL"}}
+        facts, missing = pf.build_facts(raw, show_price=False)
+        by = {f["text"]: f for f in facts}
+        self.assertEqual(by["Medidas: 30 x 40 cm"]["kind"], "dimension")
+        self.assertEqual(by["Material: algodão"]["kind"], "material")
+        self.assertTrue(by["Garantia vitalícia contra defeitos"]["risk"])
+        self.assertFalse(by["Garantia vitalícia contra defeitos"]["usable"])
+        self.assertTrue(by["O melhor do mercado"]["risk"])
+        self.assertEqual(by["Ideal para o dia a dia"]["kind"], "use")
+        price = [f for f in facts if f["kind"] == "price"][0]
+        self.assertFalse(price["usable"], "preço só é usado com show_price=true")
+        self.assertIn("quantity", missing)
+        self.assertEqual(price["text"], "R$ 49,90")
+
+    def test_manual_fact_overrides_risk(self):
+        raw = {"name": "X", "description": "", "manual_facts": [{"kind": "characteristic", "text": "Garantia de 12 meses (confirmada pelo dono)"}]}
+        facts, _ = pf.build_facts(raw)
+        self.assertTrue(facts[0]["usable"])
+        self.assertEqual(facts[0]["source"], "manual:catalogo")
+
+    def test_no_fact_is_invented(self):
+        raw = {"name": "Toalha X", "description": "Toalha de banho. Medidas 80x150cm.", "attributes": []}
+        facts, _ = pf.build_facts(raw)
+        desc = raw["description"].lower()
+        for f in facts:
+            self.assertIn(f["text"].lower().rstrip("."), desc.replace("  ", " "), "todo fato é trecho literal da fonte")
+
+    def test_display_limit(self):
+        facts, _ = pf.build_facts({"name": "X", "description": "Um texto bem longo " * 8 + "."})
+        self.assertIsNone(facts[0]["display"])
+
+
+class TestFetcher(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.root = TMP / "site"
+        photos = [make_photo(cls.root / f"p{i}.jpg", hue=h, seed=i) for i, h in enumerate([(200, 60, 60), (60, 90, 200), (60, 160, 90)])]
+        cls.pages = {
+            "/robots.txt": ("text/plain", "User-agent: *\nDisallow: /admin\n"),
+            "/loja": ("text/html", '<html><body><a href="/produto/toalha-teste">Toalha</a><a href="/produto/tabua-teste">Tábua</a>'
+                                    '<a href="/sobre">Sobre</a><a href="/loja?page=2" rel="next">Próxima</a></body></html>'),
+            "/loja?page=2": ("text/html", '<html><body><a href="/produto/kit-teste">Kit</a></body></html>'),
+            "/produto/toalha-teste": ("text/html", '<html><head><script type="application/ld+json">' + json.dumps({
+                "@context": "https://schema.org", "@type": "Product", "name": "Toalha Teste", "sku": "T1",
+                "description": "Toalha de teste.\nMedidas: 80 x 150 cm\nCompre agora com frete grátis",
+                "image": ["/img/p0.jpg", "/img/p1.jpg"], "offers": {"@type": "Offer", "price": "59.90", "priceCurrency": "BRL"},
+                "additionalProperty": [{"name": "Material", "value": "algodão de teste"}]}) + '</script></head><body></body></html>'),
+            "/produto/tabua-teste": ("text/html", '<html><head><meta property="og:title" content="Tábua Teste"><meta property="og:description" content="Tábua de teste, tamanho 30 x 40 cm.">'
+                                                  '<meta property="og:image" content="/img/p2.jpg"></head><body><h1>Tábua Teste</h1></body></html>'),
+            "/produto/kit-teste": ("text/html", '<html><body><script id="__NEXT_DATA__" type="application/json">' + json.dumps(
+                {"props": {"pageProps": {"product": {"id": 9, "name": "Kit Teste", "description": "Kit com 3 peças de teste.",
+                                                       "images": [{"url": "/img/p1.jpg"}]}}}}) + '</script></body></html>'),
+            "/admin": ("text/html", "proibido"),
+        }
+        for i in range(3):
+            cls.pages[f"/img/p{i}.jpg"] = ("image/jpeg", (cls.root / f"p{i}.jpg").read_bytes())
+        pages = cls.pages
+
+        class H(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                key = self.path
+                if key not in pages:
+                    key = key.split("?")[0] if key.split("?")[0] in pages and "?" not in key else key
+                if key not in pages:
+                    self.send_response(404); self.end_headers(); return
+                ct, body = pages[key]
+                body = body if isinstance(body, bytes) else body.encode()
+                self.send_response(200); self.send_header("Content-Type", ct); self.send_header("Content-Length", str(len(body))); self.end_headers()
+                self.wfile.write(body)
+            def log_message(self, *a): pass
+        cls.srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), H)
+        threading.Thread(target=cls.srv.serve_forever, daemon=True).start()
+        cls.cfg = load_config()
+        cls.cfg["store"].update({"base_url": f"http://127.0.0.1:{cls.srv.server_port}", "min_delay_s": 0.0})
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.srv.shutdown()
+
+    def test_discover_and_brief(self):
+        raws = pf.list_products(self.cfg, LOG)
+        names = sorted(r["name"] for r in raws)
+        self.assertEqual(names, ["Kit Teste", "Toalha Teste", "Tábua Teste"])
+        toalha = next(r for r in raws if r["name"] == "Toalha Teste")
+        brief = pf.get_brief(toalha, self.cfg, LOG)
+        self.assertEqual(len(brief["product"]["images"]), 2)
+        texts = {f["text"]: f for f in brief["confirmed_facts"]}
+        self.assertIn("Medidas: 80 x 150 cm", texts)
+        self.assertTrue(texts["Compre agora com frete grátis"]["risk"])
+        self.assertIn("Material: algodão de teste", texts)
+        self.assertFalse(next(f for f in brief["confirmed_facts"] if f["kind"] == "price")["usable"])
+        self.assertTrue(Path(brief["product"]["images"][0]["path"]).exists())
+
+    def test_og_fallback(self):
+        raws = pf.list_products(self.cfg, LOG)
+        tabua = next(r for r in raws if r["name"] == "Tábua Teste")
+        self.assertEqual(len(tabua["images"]), 1)
+        self.assertIn("30 x 40 cm", tabua["description"])
+
+    def test_robots_respected(self):
+        http_ = pf.Http(self.cfg, LOG)
+        with self.assertRaises(PipelineError):
+            http_.get(self.cfg["store"]["base_url"] + "/admin")
+
+    def test_empty_store_explains(self):
+        cfg = copy.deepcopy(self.cfg)
+        cfg["store"]["list_path"] = "/sobre-vazio"
+        self.pages["/sobre-vazio"] = ("text/html", "<html><body><div id='root'></div></body></html>")
+        with self.assertRaises(PipelineError) as cm:
+            pf.list_products(cfg, LOG)
+        self.assertIn("catálogo manual", str(cm.exception))
+
+
+class TestStoryboard(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.cfg = load_config()
+        cat = make_catalog(TMP / "fx")
+        cls.raws = pf.load_catalog(cat)
+        cls.briefs = [pf.get_brief(r, cls.cfg, LOG) for r in cls.raws]
+
+    def test_eligibility_never_invents(self):
+        b1, b2, b3 = self.briefs
+        e1, e2 = SB.eligible_archetypes(b1), SB.eligible_archetypes(b2)
+        self.assertEqual(e1["GIFT_ANGLE"] and "bloqueado", "bloqueado", "sem fato 'gift' não há arquétipo de presente")
+        self.assertEqual(e2["GIFT_ANGLE"], "")  # produto 2 tem fato de presente confirmado
+        self.assertTrue(e1["PROBLEM_SOLUTION"] and e1["BEFORE_AFTER"] and e1["COMPARISON"])
+        self.assertEqual(e1["PRODUCT_HERO"], "")
+
+    def test_text_traceable_and_unique_facts(self):
+        for b in self.briefs:
+            for arch in [a for a, why in SB.eligible_archetypes(b).items() if not why]:
+                sb = SB.build_storyboard(b, self.cfg, arch, seed=5)
+                used = []
+                for s in sb["scenes"]:
+                    if s["text"]:
+                        self.assertEqual(SB.expected_text(s["text"]["source"], b, self.cfg), s["text"]["text"])
+                        if s["text"]["source"].startswith("fact:"):
+                            used.append(s["text"]["source"])
+                self.assertEqual(len(used), len(set(used)), "mesmo fato não repete no vídeo")
+                self.assertTrue(15 <= sb["total_duration"] <= 18, sb["total_duration"])
+                self.assertAlmostEqual(sum(s["duration"] for s in sb["scenes"]), sb["total_duration"], places=2)
+                self.assertEqual(sb["scenes"][-1]["text"]["role"], "cta")
+
+    def test_risky_facts_never_used(self):
+        b3 = self.briefs[2]
+        sb = SB.build_storyboard(b3, self.cfg, "FEATURE_SHOWCASE" if not SB.eligible_archetypes(b3)["FEATURE_SHOWCASE"] else "PRODUCT_HERO", seed=1)
+        shown = " ".join(s["text"]["text"].lower() for s in sb["scenes"] if s["text"])
+        self.assertNotIn("garantia", shown)
+        self.assertNotIn("melhor", shown)
+
+    def test_variety_across_seeds(self):
+        import random
+        b = self.briefs[0]
+        picks = {SB.choose_archetype(b, random.Random(i)) for i in range(40)}
+        self.assertGreater(len(picks), 3)
+        avoid = SB.choose_archetype(b, random.Random(1), avoid_archetypes=["PRODUCT_HERO", "FEATURE_SHOWCASE"])
+        self.assertNotIn(avoid, ["PRODUCT_HERO", "FEATURE_SHOWCASE"])
+
+    def test_all_transitions_default_hard_cut(self):
+        sb = SB.build_storyboard(self.briefs[0], self.cfg, "PRODUCT_HERO", seed=2)
+        kinds = [s["transition_in"]["type"] for s in sb["scenes"]]
+        self.assertGreaterEqual(kinds.count("hard_cut") + kinds.count("match_cut"), len(kinds) // 2)
+
+    def test_retime_fits_voice(self):
+        sb = SB.build_storyboard(self.briefs[0], self.cfg, "PRODUCT_HERO", seed=2)
+        needs = {s["index"]: s["duration"] + 0.8 for s in sb["scenes"][:3]}
+        sb2, dropped = SB.retime(copy.deepcopy(sb), needs, self.cfg)
+        self.assertTrue(15 <= sb2["total_duration"] <= 18)
+        for s in sb2["scenes"]:
+            if s["index"] in needs and s["index"] not in dropped:
+                self.assertGreaterEqual(s["duration"], needs[s["index"]] - 0.04)
+        self.assertAlmostEqual(sb2["scenes"][-1]["start"] + sb2["scenes"][-1]["duration"], sb2["total_duration"], places=2)
+        huge = {s["index"]: 5.0 for s in sb["scenes"]}
+        sb3, dropped = SB.retime(copy.deepcopy(sb), huge, self.cfg)
+        self.assertTrue(dropped, "quando não cabe, falas são removidas em vez de cortadas")
+        self.assertLessEqual(sb3["total_duration"], 18)
+
+
+class TestAudio(unittest.TestCase):
+    def test_speakable_numbers(self):
+        self.assertEqual(A.speakable("80x150cm"), "80 por 150 centímetros")
+        self.assertEqual(A.speakable("Medidas: 80 x 150 cm"), "Medidas: 80 por 150 centímetros")
+        self.assertEqual(A.speakable("30 x 40"), "30 por 40")
+        self.assertEqual(A.speakable("100% algodão"), "100 por cento algodão")
+        self.assertEqual(A.speakable("R$ 49,90"), "49 reais e 90 centavos")
+
+    def test_sfx_and_music_valid(self):
+        for k in ["whoosh", "swipe", "impact", "soft_impact", "click", "pop", "rise", "hit", "ambient", "transition"]:
+            x = A.synth_sfx(k)
+            self.assertEqual(x.shape[1], 2)
+            self.assertTrue(np.isfinite(x).all() and (0.02 if k != "ambient" else 0.001) < np.abs(x).max() <= 1.2, k)
+        for p in A.PROFILES:
+            m = A.synth_music(p, 4.0)
+            self.assertEqual(m.shape, (4 * 48000, 2), p)
+            self.assertTrue(np.isfinite(m).all() and 0.3 < np.abs(m).max() <= 0.55, p)
+        a, b = A.synth_music("MODERN", 2, seed=1), A.synth_music("MODERN", 2, seed=1)
+        self.assertTrue(np.array_equal(a, b), "determinístico")
+
+    def test_ducking_curve(self):
+        sr = 48000
+        voice = np.zeros((sr * 4, 2), np.float32)
+        voice[sr:2 * sr] = fake_speech("x" * 15, sr)[:sr]
+        g = A.duck_curve(voice, sr, -14.0)
+        self.assertAlmostEqual(float(g[int(0.3 * sr)]), 1.0, places=2)
+        self.assertLess(float(g[int(1.5 * sr)]), A.db(-12))
+        self.assertGreater(float(g[int(3.8 * sr)]), 0.9, "volta ao normal depois da fala")
+
+    def test_voice_lock(self):
+        from common import CONFIG_PATH
+        lock = CONFIG_PATH.parent / "voice.lock.json"
+        existed = lock.exists()
+        backup = lock.read_bytes() if existed else None
+        try:
+            lock.unlink(missing_ok=True)
+            A.enforce_voice_lock("voz-A")
+            A.enforce_voice_lock("voz-A")
+            with self.assertRaises(PipelineError):
+                A.enforce_voice_lock("voz-B")
+            A.enforce_voice_lock("voz-B", allow_change=True)
+        finally:
+            lock.unlink(missing_ok=True)
+            if backup:
+                lock.write_bytes(backup)
+
+    def test_voice_not_configured(self):
+        env = {k: os.environ.pop(k) for k in ("ELEVENLABS_API_KEY", "ELEVENLABS_VOICE_ID") if k in os.environ}
+        try:
+            with self.assertRaises(A.VoiceNotConfigured):
+                A.voice_settings(load_config())
+        finally:
+            os.environ.update(env)
+
+
+class TestGraphics(unittest.TestCase):
+    def test_fonts_and_contrast(self):
+        import graphics as g
+        cfg = load_config()
+        path, fam = g.find_font(cfg, Path(cfg["paths"]["fonts_dir"]))
+        self.assertTrue(Path(path).exists(), fam)
+        self.assertGreater(g.contrast_ratio((255, 255, 255), (0, 0, 0)), 20)
+        self.assertLess(g.contrast_ratio((255, 255, 255), (250, 250, 250)), 1.2)
+
+
+# ----------------------------------------------------------------------------
+@unittest.skipIf(FAST, "teste lento (renderiza vídeos)")
+class TestEndToEnd(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.cfg = cfg_fast_fps()
+        cls.raws = pf.load_catalog(make_catalog(TMP / "fx"))
+
+    def brief(self, i=0):
+        return pf.get_brief(self.raws[i], self.cfg, LOG)
+
+    def test_full_video_with_voice(self):
+        with FakeVoice():
+            res = build_video(self.brief(0), self.cfg, "e2e-voice", day="2026-01-01", archetype="PRODUCT_HERO", seed=4,
+                              voice_mode="required", out_root=TMP / "out")
+        self.assertEqual(res["status"], "READY")
+        mp4 = Path(res["final_path"])
+        self.assertTrue(mp4.exists())
+        probe = ffprobe_json(mp4)
+        v = next(s for s in probe["streams"] if s["codec_type"] == "video")
+        a = next(s for s in probe["streams"] if s["codec_type"] == "audio")
+        self.assertEqual((v["codec_name"], v["pix_fmt"], v["width"], v["height"]), ("h264", "yuv420p", 1080, 1920))
+        self.assertEqual(a["codec_name"], "aac")
+        self.assertTrue(15 <= float(probe["format"]["duration"]) <= 18.05)
+        self.assertTrue(V.moov_before_mdat(mp4))
+        job = TMP / "work" / "2026-01-01" / "e2e-voice"
+        ar = load_json(job / "audio_report.json")
+        self.assertTrue(ar["has_voice"])
+        self.assertGreaterEqual(ar["ducking_applied_db"], 6)
+        self.assertFalse(ar["voice_cut"])
+        st = load_json(job / "status.json")
+        self.assertEqual([h["status"] for h in st["history"]], ["QUEUED", "PROCESSING", "RENDERING", "VALIDATING", "READY"])
+        val = load_json(job / "validation.json")
+        self.assertTrue(val["ok"], val["errors"])
+        self.assertTrue((TMP / "out" / "2026-01-01" / "_auditoria" / "video_01_produto-teste-um" / "script.md").exists())
+
+    def test_validator_rejects_corrupt_and_invented(self):
+        res = build_video(self.brief(1), self.cfg, "e2e-neg", day="2026-01-02", seed=2, voice_mode="off", out_root=TMP / "out",
+                          deliver_output=False)
+        job = TMP / "work" / "2026-01-02" / "e2e-neg"
+        sb, brief = load_json(job / "storyboard.json"), load_json(job / "brief.json")
+        rr, ar = load_json(job / "render_report.json"), load_json(job / "audio_report.json")
+        good = V.validate(job / "video.mp4", sb, brief, self.cfg, rr, ar)
+        self.assertTrue(good["ok"], good["errors"])
+        # 1) arquivo truncado = corrompido
+        bad_mp4 = TMP / "truncated.mp4"
+        data = (job / "video.mp4").read_bytes()
+        bad_mp4.write_bytes(data[: len(data) // 3])
+        r1 = V.validate(bad_mp4, sb, brief, self.cfg, rr, ar)
+        self.assertFalse(r1["ok"])
+        # 2) texto inventado no storyboard
+        sb2 = copy.deepcopy(sb)
+        tgt = next(s for s in sb2["scenes"] if s["text"] and s["text"]["source"].startswith("fact:"))
+        tgt["text"]["text"] = "Resistente a água e super durável"
+        r2 = V.validate(job / "video.mp4", sb2, brief, self.cfg, rr, ar)
+        self.assertFalse(r2["ok"])
+        self.assertTrue(any("inventada" in e for e in r2["errors"]))
+        # 3) texto fora da safe area
+        rr3 = copy.deepcopy(rr)
+        rr3["scenes"][0]["layers"] = rr3["scenes"][0]["layers"] or [{"scene": 1, "bbox": [0, 0, 100, 100], "font_px": 60, "contrast": 9}]
+        rr3["scenes"][0]["layers"][0]["bbox"] = [0, 10, 300, 100]
+        self.assertFalse(V.validate(job / "video.mp4", sb, brief, self.cfg, rr3, ar)["ok"])
+        # 4) arquivo mudo / sem CTA
+        sb4 = copy.deepcopy(sb)
+        sb4["scenes"][-1]["text"]["role"] = "fact"
+        self.assertFalse(V.validate(job / "video.mp4", sb4, brief, self.cfg, rr, ar)["ok"])
+
+    def test_failed_job_never_ready(self):
+        brief = self.brief(0)
+        brief["product"]["images"][0]["path"] = str(TMP / "nao-existe.jpg")
+        with self.assertRaises(PipelineError):
+            build_video(brief, self.cfg, "e2e-fail", day="2026-01-03", seed=1, voice_mode="off", out_root=TMP / "out")
+        st = load_json(TMP / "work" / "2026-01-03" / "e2e-fail" / "status.json")
+        self.assertEqual(st["status"], "FAILED")
+        self.assertFalse((TMP / "out" / "2026-01-03").exists(), "nada é entregue quando falha")
+
+    def test_daily_routine_three_distinct_videos_with_fallback(self):
+        import scheduler as S
+        calls = {"n": 0}
+
+        def flaky(brief, cfg, job_id, **kw):  # a 1ª tentativa do 1º slot falha: deve haver nova tentativa
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise PipelineError("falha simulada")
+            return build_video(brief, cfg, job_id, **kw)
+        out = TMP / "out-daily"
+        # 4 produtos no catálogo para provar a variedade; reaproveita as fotos de teste
+        cat = load_json(TMP / "fx" / "catalog.json")
+        p4 = copy.deepcopy(cat["products"][0])
+        p4.update({"id": "teste-004", "name": "PRODUTO TESTE QUATRO"})
+        cat["products"].append(p4)
+        save_json(TMP / "fx" / "catalog4.json", cat)
+        res = S.run_daily(self.cfg, day="2026-02-01", catalog=TMP / "fx" / "catalog4.json", voice_mode="off",
+                          out_root=out, build_fn=flaky, now_fn=lambda: __import__("datetime").datetime(2026, 2, 1, 3, 0))
+        self.assertEqual(res["ready"], 3, res)
+        self.assertEqual(res["exit_code"], 0)
+        files = sorted((out / "2026-02-01").glob("video_*.mp4"))
+        self.assertEqual(len(files), 3)
+        arche = [v["arquetipo"] for v in res["videos"]]
+        prods = [v["produto"] for v in res["videos"]]
+        self.assertEqual(len(set(arche)), 3, f"arquétipos repetidos: {arche}")
+        self.assertEqual(len(set(prods)), 3)
+        self.assertTrue(res["errors"], "a falha simulada foi registrada")
+        # idempotência: rodar de novo não gera mais vídeos
+        again = S.run_daily(self.cfg, day="2026-02-01", catalog=TMP / "fx" / "catalog4.json", voice_mode="off", out_root=out,
+                            now_fn=lambda: __import__("datetime").datetime(2026, 2, 1, 5, 0))
+        self.assertEqual(again["videos"], [])
+        self.assertEqual(len(list((out / "2026-02-01").glob("video_*.mp4"))), 3)
+        # dia seguinte: evita repetir os produtos de ontem quando há alternativa
+        st = S.load_state(self.cfg)
+        self.assertEqual(len(st["days"]["2026-02-01"]["slots"]), 3)
+
+    def test_deadline_stops_new_videos(self):
+        import scheduler as S
+        res = S.run_daily(self.cfg, day="2026-03-01", catalog=TMP / "fx" / "catalog.json", voice_mode="off",
+                          out_root=TMP / "out-late", now_fn=lambda: __import__("datetime").datetime(2026, 3, 1, 8, 30))
+        self.assertEqual(res["ready"], 0)
+        self.assertTrue(all(s["motivo"] == "prazo" for s in res["skipped"]))
+
+    def test_not_enough_products_does_not_invent(self):
+        import scheduler as S
+        one = load_json(TMP / "fx" / "catalog.json")
+        one["products"] = one["products"][:1]
+        save_json(TMP / "fx" / "catalog1.json", one)
+        res = S.run_daily(self.cfg, day="2026-04-01", catalog=TMP / "fx" / "catalog1.json", voice_mode="off", out_root=TMP / "out-one",
+                          now_fn=lambda: __import__("datetime").datetime(2026, 4, 1, 3, 0))
+        self.assertEqual(res["ready"], 1)
+        self.assertEqual(res["exit_code"], 2)
+        self.assertEqual(len(res["skipped"]), 2)
+
+    def test_task_xml(self):
+        import scheduler as S
+        xml = S.task_xml(r"C:\Python312\pythonw.exe", self.cfg, "02:00", "05:00")
+        for needle in ("T02:00:00", "T05:00:00", "<WakeToRun>true", "<StartWhenAvailable>true", "run-daily", "IgnoreNew", "InteractiveToken"):
+            self.assertIn(needle, xml)
+        import xml.dom.minidom as md
+        md.parseString(xml.split("?>", 1)[1])
+
+
+if __name__ == "__main__":
+    try:
+        unittest.main(verbosity=2)
+    finally:
+        shutil.rmtree(TMP, ignore_errors=True)

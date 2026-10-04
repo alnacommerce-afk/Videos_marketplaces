@@ -1,0 +1,1137 @@
+{
+  "_doc": "Biblioteca de arquétipos. 'beats' define a ordem narrativa; 'w' é o peso de duração. 'text' diz de onde vem o texto da cena: hook | name | fact | fact_card | cta | none. 'requires' bloqueia o arquétipo quando o Product Brief não tem os fatos necessários (nunca inventar).",
+  "archetypes": {
+    "PRODUCT_HERO": {
+      "label": "Product Hero",
+      "pace": "medium",
+      "music": [
+        "PREMIUM",
+        "MODERN",
+        "MINIMAL"
+      ],
+      "style": "clean",
+      "requires": {
+        "min_images": 1
+      },
+      "beats": [
+        {
+          "role": "HOOK",
+          "shot": "hero",
+          "move": [
+            "push_in"
+          ],
+          "w": 2.6,
+          "text": "hook",
+          "anim": "scale",
+          "sfx": "impact"
+        },
+        {
+          "role": "PRODUCT_REVEAL",
+          "shot": "hero_wide",
+          "move": [
+            "pull_out",
+            "pan_h"
+          ],
+          "w": 3.0,
+          "text": "name",
+          "anim": "mask",
+          "transition": "dissolve",
+          "tw": 0.4
+        },
+        {
+          "role": "DETAIL",
+          "shot": "detail",
+          "move": [
+            "push_in",
+            "diagonal"
+          ],
+          "w": 3.4,
+          "text": "fact",
+          "anim": "slide",
+          "sfx": "click"
+        },
+        {
+          "role": "BENEFIT",
+          "shot": "detail2",
+          "move": [
+            "pan_h",
+            "pan_v"
+          ],
+          "w": 3.4,
+          "text": "fact_card",
+          "anim": "slide",
+          "sfx": "soft_impact"
+        },
+        {
+          "role": "DESIRE",
+          "shot": "hero",
+          "move": [
+            "pull_out"
+          ],
+          "w": 2.4,
+          "text": "none",
+          "transition": "dissolve",
+          "tw": 0.5
+        },
+        {
+          "role": "CTA",
+          "shot": "hero_wide",
+          "move": [
+            "push_in"
+          ],
+          "w": 2.7,
+          "text": "cta",
+          "anim": "scale",
+          "sfx": "pop",
+          "transition": "match_cut"
+        }
+      ]
+    },
+    "PROBLEM_SOLUTION": {
+      "label": "Problem → Solution",
+      "pace": "fast",
+      "music": [
+        "MODERN",
+        "ENERGETIC"
+      ],
+      "style": "bold",
+      "requires": {
+        "fact_kinds_any": [
+          "problem"
+        ],
+        "min_images": 1
+      },
+      "beats": [
+        {
+          "role": "HOOK",
+          "shot": "detail",
+          "move": [
+            "push_in"
+          ],
+          "w": 2.4,
+          "text": "fact:problem",
+          "anim": "words",
+          "sfx": "swipe"
+        },
+        {
+          "role": "PRODUCT_REVEAL",
+          "shot": "hero",
+          "move": [
+            "pull_out"
+          ],
+          "w": 3.0,
+          "text": "name",
+          "anim": "scale",
+          "transition": "whip",
+          "tw": 0.3,
+          "sfx": "whoosh"
+        },
+        {
+          "role": "DEMONSTRATION",
+          "shot": "detail",
+          "move": [
+            "pan_h"
+          ],
+          "w": 3.4,
+          "text": "fact",
+          "anim": "slide",
+          "sfx": "click"
+        },
+        {
+          "role": "BENEFIT",
+          "shot": "detail2",
+          "move": [
+            "diagonal"
+          ],
+          "w": 3.4,
+          "text": "fact_card",
+          "anim": "slide",
+          "sfx": "soft_impact"
+        },
+        {
+          "role": "CTA",
+          "shot": "hero_wide",
+          "move": [
+            "push_in"
+          ],
+          "w": 3.0,
+          "text": "cta",
+          "anim": "scale",
+          "sfx": "pop"
+        }
+      ]
+    },
+    "LIFESTYLE": {
+      "label": "Lifestyle",
+      "pace": "slow",
+      "music": [
+        "LIFESTYLE",
+        "ARTISANAL"
+      ],
+      "style": "warm",
+      "requires": {
+        "fact_kinds_any": [
+          "use"
+        ],
+        "min_images": 1
+      },
+      "beats": [
+        {
+          "role": "HOOK",
+          "shot": "hero",
+          "move": [
+            "pan_h"
+          ],
+          "w": 2.8,
+          "text": "hook",
+          "anim": "fade"
+        },
+        {
+          "role": "USE",
+          "shot": "detail",
+          "move": [
+            "push_in"
+          ],
+          "w": 3.6,
+          "text": "fact:use",
+          "anim": "words",
+          "transition": "dissolve",
+          "tw": 0.5
+        },
+        {
+          "role": "DETAIL",
+          "shot": "detail2",
+          "move": [
+            "diagonal",
+            "pan_v"
+          ],
+          "w": 3.2,
+          "text": "fact",
+          "anim": "fade",
+          "transition": "dissolve",
+          "tw": 0.5
+        },
+        {
+          "role": "DESIRE",
+          "shot": "hero_wide",
+          "move": [
+            "pull_out"
+          ],
+          "w": 3.2,
+          "text": "name",
+          "anim": "fade"
+        },
+        {
+          "role": "CTA",
+          "shot": "hero",
+          "move": [
+            "push_in"
+          ],
+          "w": 2.8,
+          "text": "cta",
+          "anim": "fade",
+          "sfx": "pop"
+        }
+      ]
+    },
+    "FEATURE_SHOWCASE": {
+      "label": "Feature Showcase",
+      "pace": "medium",
+      "music": [
+        "MODERN",
+        "PREMIUM"
+      ],
+      "style": "clean",
+      "requires": {
+        "min_facts": 2,
+        "min_images": 1
+      },
+      "beats": [
+        {
+          "role": "HOOK",
+          "shot": "hero",
+          "move": [
+            "push_in"
+          ],
+          "w": 2.2,
+          "text": "hook",
+          "anim": "kinetic",
+          "sfx": "impact"
+        },
+        {
+          "role": "FEATURE_1",
+          "shot": "detail",
+          "move": [
+            "pan_h"
+          ],
+          "w": 3.2,
+          "text": "fact_card",
+          "anim": "slide",
+          "transition": "directional_wipe",
+          "tw": 0.35,
+          "sfx": "swipe"
+        },
+        {
+          "role": "FEATURE_2",
+          "shot": "detail2",
+          "move": [
+            "diagonal"
+          ],
+          "w": 3.2,
+          "text": "fact_card",
+          "anim": "slide",
+          "transition": "directional_wipe",
+          "tw": 0.35,
+          "sfx": "swipe"
+        },
+        {
+          "role": "FEATURE_3",
+          "shot": "macro",
+          "move": [
+            "push_in"
+          ],
+          "w": 3.2,
+          "text": "fact_card",
+          "anim": "slide",
+          "sfx": "soft_impact"
+        },
+        {
+          "role": "REVEAL",
+          "shot": "hero_wide",
+          "move": [
+            "pull_out"
+          ],
+          "w": 2.4,
+          "text": "name",
+          "anim": "scale",
+          "transition": "zoom",
+          "tw": 0.4
+        },
+        {
+          "role": "CTA",
+          "shot": "hero",
+          "move": [
+            "push_in"
+          ],
+          "w": 2.3,
+          "text": "cta",
+          "anim": "scale",
+          "sfx": "pop"
+        }
+      ]
+    },
+    "PRODUCT_DEMONSTRATION": {
+      "label": "Product Demonstration",
+      "pace": "medium",
+      "music": [
+        "MODERN",
+        "LIFESTYLE"
+      ],
+      "style": "clean",
+      "requires": {
+        "fact_kinds_any": [
+          "use"
+        ],
+        "min_images": 2
+      },
+      "beats": [
+        {
+          "role": "HOOK",
+          "shot": "hero",
+          "move": [
+            "push_in"
+          ],
+          "w": 2.4,
+          "text": "hook",
+          "anim": "scale",
+          "sfx": "impact"
+        },
+        {
+          "role": "DEMO_1",
+          "shot": "detail",
+          "move": [
+            "pan_h"
+          ],
+          "w": 3.6,
+          "text": "fact:use",
+          "anim": "words",
+          "sfx": "click"
+        },
+        {
+          "role": "DEMO_2",
+          "shot": "detail2",
+          "move": [
+            "diagonal"
+          ],
+          "w": 3.4,
+          "text": "fact",
+          "anim": "slide",
+          "transition": "motion",
+          "tw": 0.3,
+          "sfx": "swipe"
+        },
+        {
+          "role": "DESIRE",
+          "shot": "hero_wide",
+          "move": [
+            "pull_out"
+          ],
+          "w": 3.4,
+          "text": "name",
+          "anim": "mask"
+        },
+        {
+          "role": "CTA",
+          "shot": "hero",
+          "move": [
+            "push_in"
+          ],
+          "w": 2.7,
+          "text": "cta",
+          "anim": "scale",
+          "sfx": "pop"
+        }
+      ]
+    },
+    "DETAIL_MACRO": {
+      "label": "Detail / Macro",
+      "pace": "slow",
+      "music": [
+        "PREMIUM",
+        "MINIMAL"
+      ],
+      "style": "dark",
+      "requires": {
+        "min_images": 1,
+        "min_facts": 1
+      },
+      "beats": [
+        {
+          "role": "HOOK",
+          "shot": "macro",
+          "move": [
+            "pull_out"
+          ],
+          "w": 2.8,
+          "text": "none",
+          "sfx": "rise",
+          "focus_pull": true
+        },
+        {
+          "role": "DETAIL_1",
+          "shot": "macro2",
+          "move": [
+            "pan_h",
+            "diagonal"
+          ],
+          "w": 3.4,
+          "text": "fact",
+          "anim": "mask",
+          "transition": "blur",
+          "tw": 0.45
+        },
+        {
+          "role": "DETAIL_2",
+          "shot": "detail",
+          "move": [
+            "push_in"
+          ],
+          "w": 3.4,
+          "text": "fact_card",
+          "anim": "fade",
+          "transition": "dissolve",
+          "tw": 0.5
+        },
+        {
+          "role": "REVEAL",
+          "shot": "hero_wide",
+          "move": [
+            "pull_out"
+          ],
+          "w": 3.4,
+          "text": "name",
+          "anim": "mask",
+          "transition": "light_sweep",
+          "tw": 0.5
+        },
+        {
+          "role": "CTA",
+          "shot": "hero",
+          "move": [
+            "push_in"
+          ],
+          "w": 2.8,
+          "text": "cta",
+          "anim": "fade",
+          "sfx": "pop",
+          "transition": "match_cut"
+        }
+      ]
+    },
+    "BEFORE_AFTER": {
+      "label": "Before / After",
+      "pace": "medium",
+      "music": [
+        "MODERN",
+        "ENERGETIC"
+      ],
+      "style": "bold",
+      "requires": {
+        "fact_kinds_any": [
+          "before",
+          "after"
+        ],
+        "min_images": 2
+      },
+      "beats": [
+        {
+          "role": "BEFORE",
+          "shot": "detail",
+          "move": [
+            "pan_h"
+          ],
+          "w": 3.6,
+          "text": "fact:before",
+          "anim": "slide"
+        },
+        {
+          "role": "AFTER",
+          "shot": "detail2",
+          "move": [
+            "push_in"
+          ],
+          "w": 3.8,
+          "text": "fact:after",
+          "anim": "slide",
+          "transition": "directional_wipe",
+          "tw": 0.4,
+          "sfx": "swipe"
+        },
+        {
+          "role": "REVEAL",
+          "shot": "hero_wide",
+          "move": [
+            "pull_out"
+          ],
+          "w": 3.4,
+          "text": "name",
+          "anim": "scale"
+        },
+        {
+          "role": "CTA",
+          "shot": "hero",
+          "move": [
+            "push_in"
+          ],
+          "w": 3.0,
+          "text": "cta",
+          "anim": "scale",
+          "sfx": "pop"
+        }
+      ]
+    },
+    "HOW_TO_USE": {
+      "label": "How to Use",
+      "pace": "medium",
+      "music": [
+        "LIFESTYLE",
+        "MODERN"
+      ],
+      "style": "clean",
+      "requires": {
+        "fact_kinds_any": [
+          "use"
+        ],
+        "min_images": 1,
+        "min_facts": 2
+      },
+      "beats": [
+        {
+          "role": "HOOK",
+          "shot": "hero",
+          "move": [
+            "push_in"
+          ],
+          "w": 2.2,
+          "text": "hook",
+          "anim": "scale",
+          "sfx": "impact"
+        },
+        {
+          "role": "STEP_1",
+          "shot": "detail",
+          "move": [
+            "pan_h"
+          ],
+          "w": 3.4,
+          "text": "fact:use",
+          "anim": "slide",
+          "sfx": "click"
+        },
+        {
+          "role": "STEP_2",
+          "shot": "detail2",
+          "move": [
+            "diagonal"
+          ],
+          "w": 3.4,
+          "text": "fact",
+          "anim": "slide",
+          "transition": "motion",
+          "tw": 0.3,
+          "sfx": "click"
+        },
+        {
+          "role": "STEP_3",
+          "shot": "macro",
+          "move": [
+            "push_in"
+          ],
+          "w": 3.0,
+          "text": "fact",
+          "anim": "slide",
+          "sfx": "click"
+        },
+        {
+          "role": "CTA",
+          "shot": "hero_wide",
+          "move": [
+            "pull_out"
+          ],
+          "w": 3.0,
+          "text": "cta",
+          "anim": "scale",
+          "sfx": "pop"
+        }
+      ]
+    },
+    "GIFT_ANGLE": {
+      "label": "Gift Angle",
+      "pace": "slow",
+      "music": [
+        "LIFESTYLE",
+        "PREMIUM"
+      ],
+      "style": "warm",
+      "requires": {
+        "fact_kinds_any": [
+          "gift"
+        ],
+        "min_images": 1
+      },
+      "beats": [
+        {
+          "role": "HOOK",
+          "shot": "hero",
+          "move": [
+            "push_in"
+          ],
+          "w": 2.8,
+          "text": "fact:gift",
+          "anim": "words",
+          "sfx": "rise"
+        },
+        {
+          "role": "REVEAL",
+          "shot": "hero_wide",
+          "move": [
+            "pull_out"
+          ],
+          "w": 3.2,
+          "text": "name",
+          "anim": "fade",
+          "transition": "dissolve",
+          "tw": 0.5
+        },
+        {
+          "role": "DETAIL",
+          "shot": "detail",
+          "move": [
+            "pan_h"
+          ],
+          "w": 3.6,
+          "text": "fact",
+          "anim": "fade",
+          "transition": "dissolve",
+          "tw": 0.5
+        },
+        {
+          "role": "DESIRE",
+          "shot": "detail2",
+          "move": [
+            "diagonal"
+          ],
+          "w": 3.2,
+          "text": "fact_card",
+          "anim": "fade"
+        },
+        {
+          "role": "CTA",
+          "shot": "hero",
+          "move": [
+            "push_in"
+          ],
+          "w": 3.0,
+          "text": "cta",
+          "anim": "fade",
+          "sfx": "pop"
+        }
+      ]
+    },
+    "PRODUCT_DISCOVERY": {
+      "label": "Product Discovery",
+      "pace": "medium",
+      "music": [
+        "MODERN",
+        "LIFESTYLE"
+      ],
+      "style": "clean",
+      "requires": {
+        "min_images": 1
+      },
+      "beats": [
+        {
+          "role": "HOOK",
+          "shot": "macro",
+          "move": [
+            "pull_out"
+          ],
+          "w": 2.4,
+          "text": "none",
+          "sfx": "rise",
+          "focus_pull": true
+        },
+        {
+          "role": "REVEAL",
+          "shot": "hero_wide",
+          "move": [
+            "pull_out"
+          ],
+          "w": 3.2,
+          "text": "hook",
+          "anim": "words",
+          "transition": "zoom",
+          "tw": 0.4,
+          "sfx": "whoosh"
+        },
+        {
+          "role": "DETAIL",
+          "shot": "detail",
+          "move": [
+            "pan_h"
+          ],
+          "w": 3.4,
+          "text": "fact",
+          "anim": "slide",
+          "sfx": "click"
+        },
+        {
+          "role": "BENEFIT",
+          "shot": "detail2",
+          "move": [
+            "push_in"
+          ],
+          "w": 3.6,
+          "text": "fact_card",
+          "anim": "slide",
+          "sfx": "soft_impact"
+        },
+        {
+          "role": "CTA",
+          "shot": "hero",
+          "move": [
+            "push_in"
+          ],
+          "w": 3.0,
+          "text": "cta",
+          "anim": "scale",
+          "sfx": "pop"
+        }
+      ]
+    },
+    "BENEFIT_SHOWCASE": {
+      "label": "Benefit Showcase",
+      "pace": "medium",
+      "music": [
+        "MODERN",
+        "LIFESTYLE",
+        "PREMIUM"
+      ],
+      "style": "warm",
+      "requires": {
+        "min_facts": 2,
+        "min_images": 1
+      },
+      "beats": [
+        {
+          "role": "HOOK",
+          "shot": "hero",
+          "move": [
+            "push_in"
+          ],
+          "w": 2.4,
+          "text": "fact",
+          "anim": "words",
+          "sfx": "impact"
+        },
+        {
+          "role": "BENEFIT_1",
+          "shot": "detail",
+          "move": [
+            "diagonal"
+          ],
+          "w": 3.4,
+          "text": "fact_card",
+          "anim": "slide",
+          "sfx": "soft_impact"
+        },
+        {
+          "role": "BENEFIT_2",
+          "shot": "detail2",
+          "move": [
+            "pan_h"
+          ],
+          "w": 3.4,
+          "text": "fact_card",
+          "anim": "slide",
+          "transition": "dissolve",
+          "tw": 0.4,
+          "sfx": "soft_impact"
+        },
+        {
+          "role": "REVEAL",
+          "shot": "hero_wide",
+          "move": [
+            "pull_out"
+          ],
+          "w": 3.2,
+          "text": "name",
+          "anim": "mask"
+        },
+        {
+          "role": "CTA",
+          "shot": "hero",
+          "move": [
+            "push_in"
+          ],
+          "w": 3.0,
+          "text": "cta",
+          "anim": "scale",
+          "sfx": "pop"
+        }
+      ]
+    },
+    "COMPARISON": {
+      "label": "Comparison",
+      "pace": "medium",
+      "music": [
+        "MODERN"
+      ],
+      "style": "bold",
+      "requires": {
+        "fact_kinds_any": [
+          "comparison"
+        ],
+        "min_images": 1
+      },
+      "beats": [
+        {
+          "role": "HOOK",
+          "shot": "hero",
+          "move": [
+            "push_in"
+          ],
+          "w": 2.6,
+          "text": "hook",
+          "anim": "scale",
+          "sfx": "impact"
+        },
+        {
+          "role": "POINT_1",
+          "shot": "detail",
+          "move": [
+            "pan_h"
+          ],
+          "w": 3.6,
+          "text": "fact:comparison",
+          "anim": "slide",
+          "sfx": "click"
+        },
+        {
+          "role": "POINT_2",
+          "shot": "detail2",
+          "move": [
+            "diagonal"
+          ],
+          "w": 3.6,
+          "text": "fact:comparison",
+          "anim": "slide",
+          "transition": "directional_wipe",
+          "tw": 0.35,
+          "sfx": "swipe"
+        },
+        {
+          "role": "REVEAL",
+          "shot": "hero_wide",
+          "move": [
+            "pull_out"
+          ],
+          "w": 3.0,
+          "text": "name",
+          "anim": "scale"
+        },
+        {
+          "role": "CTA",
+          "shot": "hero",
+          "move": [
+            "push_in"
+          ],
+          "w": 2.8,
+          "text": "cta",
+          "anim": "scale",
+          "sfx": "pop"
+        }
+      ]
+    },
+    "UNBOXING": {
+      "label": "Unboxing",
+      "pace": "medium",
+      "music": [
+        "LIFESTYLE",
+        "MODERN"
+      ],
+      "style": "warm",
+      "requires": {
+        "fact_kinds_any": [
+          "contents",
+          "quantity"
+        ],
+        "min_images": 1
+      },
+      "beats": [
+        {
+          "role": "HOOK",
+          "shot": "hero",
+          "move": [
+            "push_in"
+          ],
+          "w": 2.4,
+          "text": "hook",
+          "anim": "scale",
+          "sfx": "rise"
+        },
+        {
+          "role": "CONTENTS",
+          "shot": "hero_wide",
+          "move": [
+            "pan_h"
+          ],
+          "w": 3.8,
+          "text": "fact:contents,quantity",
+          "anim": "words",
+          "sfx": "pop"
+        },
+        {
+          "role": "DETAIL",
+          "shot": "detail",
+          "move": [
+            "diagonal"
+          ],
+          "w": 3.4,
+          "text": "fact",
+          "anim": "slide",
+          "transition": "dissolve",
+          "tw": 0.4,
+          "sfx": "click"
+        },
+        {
+          "role": "REVEAL",
+          "shot": "detail2",
+          "move": [
+            "push_in"
+          ],
+          "w": 3.0,
+          "text": "name",
+          "anim": "mask"
+        },
+        {
+          "role": "CTA",
+          "shot": "hero",
+          "move": [
+            "pull_out"
+          ],
+          "w": 2.9,
+          "text": "cta",
+          "anim": "scale",
+          "sfx": "pop"
+        }
+      ]
+    },
+    "FAST_PACED_AD": {
+      "label": "Fast-paced Performance Ad",
+      "pace": "fast",
+      "music": [
+        "ENERGETIC",
+        "MODERN"
+      ],
+      "style": "bold",
+      "requires": {
+        "min_facts": 2,
+        "min_images": 1
+      },
+      "beats": [
+        {
+          "role": "HOOK",
+          "shot": "macro",
+          "move": [
+            "push_in"
+          ],
+          "w": 1.6,
+          "text": "hook",
+          "anim": "kinetic",
+          "sfx": "impact"
+        },
+        {
+          "role": "REVEAL",
+          "shot": "hero",
+          "move": [
+            "pull_out"
+          ],
+          "w": 2.0,
+          "text": "name",
+          "anim": "scale",
+          "sfx": "swipe"
+        },
+        {
+          "role": "FACT_1",
+          "shot": "detail",
+          "move": [
+            "diagonal"
+          ],
+          "w": 2.2,
+          "text": "fact_card",
+          "anim": "slide",
+          "sfx": "click"
+        },
+        {
+          "role": "FACT_2",
+          "shot": "detail2",
+          "move": [
+            "pan_h"
+          ],
+          "w": 2.2,
+          "text": "fact_card",
+          "anim": "slide",
+          "transition": "whip",
+          "tw": 0.25,
+          "sfx": "whoosh"
+        },
+        {
+          "role": "FACT_3",
+          "shot": "macro2",
+          "move": [
+            "push_in"
+          ],
+          "w": 2.2,
+          "text": "fact_card",
+          "anim": "slide",
+          "transition": "speed_ramp",
+          "tw": 0.3,
+          "sfx": "click"
+        },
+        {
+          "role": "DESIRE",
+          "shot": "hero_wide",
+          "move": [
+            "pull_out"
+          ],
+          "w": 2.0,
+          "text": "none"
+        },
+        {
+          "role": "CTA",
+          "shot": "hero",
+          "move": [
+            "push_in"
+          ],
+          "w": 2.6,
+          "text": "cta",
+          "anim": "scale",
+          "sfx": "pop"
+        }
+      ]
+    },
+    "PREMIUM_CINEMATIC": {
+      "label": "Premium Cinematic Commercial",
+      "pace": "slow",
+      "music": [
+        "PREMIUM",
+        "MINIMAL"
+      ],
+      "style": "dark",
+      "requires": {
+        "min_images": 1
+      },
+      "beats": [
+        {
+          "role": "HOOK",
+          "shot": "macro",
+          "move": [
+            "pull_out"
+          ],
+          "w": 3.0,
+          "text": "none",
+          "sfx": "rise",
+          "focus_pull": true
+        },
+        {
+          "role": "REVEAL",
+          "shot": "hero_wide",
+          "move": [
+            "push_in"
+          ],
+          "w": 3.6,
+          "text": "name",
+          "anim": "tracking",
+          "transition": "light_sweep",
+          "tw": 0.6
+        },
+        {
+          "role": "DETAIL",
+          "shot": "detail",
+          "move": [
+            "pan_h"
+          ],
+          "w": 3.4,
+          "text": "fact",
+          "anim": "mask",
+          "transition": "dissolve",
+          "tw": 0.6
+        },
+        {
+          "role": "DETAIL_2",
+          "shot": "macro2",
+          "move": [
+            "diagonal"
+          ],
+          "w": 3.2,
+          "text": "fact",
+          "anim": "mask",
+          "transition": "dissolve",
+          "tw": 0.6
+        },
+        {
+          "role": "CTA",
+          "shot": "hero",
+          "move": [
+            "pull_out"
+          ],
+          "w": 3.2,
+          "text": "cta",
+          "anim": "tracking",
+          "sfx": "pop"
+        }
+      ]
+    }
+  }
+}
