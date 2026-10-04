@@ -24,7 +24,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
-from common import (Logger, PipelineError, cache_dir, iso, load_config, load_json, save_json,
+from common import (Logger, PipelineError, cache_dir, iso, load_config, load_json, redact, save_json,
                     sha256_file, slugify)
 
 EXPECTED_KINDS = ["material", "dimension", "quantity", "color"]  # só para registrar o que faltou
@@ -104,7 +104,7 @@ class Http:
                         f.write(chunk)
         except self.requests.RequestException as e:
             part.unlink(missing_ok=True)
-            raise PipelineError(f"Falha de rede ao baixar: {e}") from e
+            raise PipelineError(f"Falha de rede ao baixar: {redact(str(e))}") from e
         except PipelineError:
             part.unlink(missing_ok=True)
             raise
@@ -128,7 +128,7 @@ class Http:
         try:
             r = self.session.get(full, headers=headers or {}, timeout=self.s["timeout_s"])
         except self.requests.RequestException as e:
-            raise PipelineError(f"Falha de rede em {url}: {e}") from e
+            raise PipelineError(f"Falha de rede em {url}: {redact(str(e))}") from e
         if r.status_code != 200:
             raise PipelineError(f"API HTTP {r.status_code} em {url}: {r.text[:160]}")
         r.encoding = "utf-8"

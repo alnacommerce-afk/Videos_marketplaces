@@ -8,7 +8,7 @@ Regras (todas verificadas no quality gate):
     mostrariam OUTRO produto; clipes com crianças são evitados;
   * origem (id, autor, link) fica registrada em creditos.txt e no relatório do vídeo.
 
-Chave: variável de ambiente PIXABAY_API_KEY (nunca em arquivo do projeto).
+Chave: variável de ambiente PIXABAY_API_KEY ou o arquivo local `APIpixabay` (fora do git). Nunca vai para o repositório.
 A API exige cache de 24 h e proíbe download em massa: buscamos só o que vamos usar e guardamos cada clipe.
 """
 from __future__ import annotations
@@ -22,6 +22,7 @@ import unicodedata
 from pathlib import Path
 
 from common import Logger, PipelineError, cache_dir, iso, ffprobe_json, sha256_file
+from localsecrets import PIXABAY_KEY, read_secret
 
 # tema -> (regex em pt, consulta pt, consulta en). Só estes temas geram busca.
 THEMES = [
@@ -122,7 +123,7 @@ def prepare_broll(brief: dict, cfg: dict, logger: Logger, offline: bool = False)
     """Devolve até `max_per_video` clipes (já baixados) com a origem registrada. Nunca derruba o vídeo:
     sem chave, sem tema, sem rede ou sem clipe adequado => lista vazia e o vídeo segue só com fotos."""
     b = cfg.get("broll") or {}
-    key = os.environ.get(b.get("key_env", "PIXABAY_API_KEY"), "")
+    key, _origin = read_secret(b.get("key_env", "PIXABAY_API_KEY"), [b.get("key_file", "APIpixabay")], PIXABAY_KEY)
     if not (b.get("enabled") and key):
         return []
     themes = themes_for(brief)

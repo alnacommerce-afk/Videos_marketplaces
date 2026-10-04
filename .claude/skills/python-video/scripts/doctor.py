@@ -151,12 +151,20 @@ def check_notify():
 
 
 def check_broll(cfg):
+    from localsecrets import PIXABAY_KEY, find_secret_file, read_secret
     b = cfg.get("broll", {})
-    if os.environ.get(b.get("key_env", "PIXABAY_API_KEY")):
-        add("OK", "Clipes de ambiente (Pixabay)", "chave configurada")
+    names = [b.get("key_file", "APIpixabay")]
+    key, origin = read_secret(b.get("key_env", "PIXABAY_API_KEY"), names, PIXABAY_KEY)
+    if key:
+        add("OK", "Clipes de ambiente (Pixabay)", f"chave lida de: {origin}")
+        return
+    f = find_secret_file(names)
+    if f:
+        add("FALHA", "Clipes de ambiente (Pixabay)", f"encontrei o arquivo {f.name}, mas não achei nele uma chave no formato esperado "
+            "(números-letras, ex.: 12345678-abcdef...)", "Abra o arquivo no Bloco de Notas e cole só a chave, sem aspas")
     else:
         add("AVISO", "Clipes de ambiente (Pixabay)", "sem chave: os vídeos usam só as fotos",
-            'setx PIXABAY_API_KEY "sua-chave" (chave gratuita em pixabay.com/api/docs) e reabra o terminal')
+            "Crie o arquivo APIpixabay (Bloco de Notas) na pasta da skill com a chave dentro, ou defina PIXABAY_API_KEY")
 
 
 def check_task():

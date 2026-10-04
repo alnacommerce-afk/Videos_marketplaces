@@ -12,6 +12,7 @@ import copy
 import http.server
 import json
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -507,6 +508,10 @@ class TestStoreApi(unittest.TestCase):
         self.assertTrue(str(cm.exception))
 
 
+# chave FALSA de teste (montada em pedaços para a varredura de segredos não acusar este arquivo)
+FILE_KEY = "1234567" + "8-" + "abcdef0123456789" + "abcdef01"
+
+
 def make_clip(path: Path, size: str, dur: int = 8, rate: int = 30) -> Path:
     """Clipe sintético (padrão de teste do FFmpeg) — só para exercitar a leitura/composição."""
     from common import run, which_tool
@@ -559,7 +564,7 @@ class TestBroll(unittest.TestCase):
                     calls.append({"q": q.get("q", [""])[0], "lang": q.get("lang", [""])[0], "key": q.get("key", [""])[0]})
                     if cls.force_fail:
                         self.send_response(500); self.end_headers(); return
-                    if q.get("key", [""])[0] != "pixkey":
+                    if q.get("key", [""])[0] not in ("pixkey", FILE_KEY):
                         self.send_response(400); self.end_headers(); self.wfile.write(b"[ERROR 400] Invalid API key"); return
                     base = f"http://127.0.0.1:{cls.srv.server_port}"
                     body = json.dumps({"total": 4, "totalHits": 4, "hits": json.loads(json.dumps(hits).replace("{BASE}", base))}).encode()
@@ -636,6 +641,19 @@ class TestBroll(unittest.TestCase):
         again = self.broll.prepare_broll(b, self.cfg, LOG)                     # 2ª vez: tudo do cache (API exige 24 h)
         self.assertEqual(len(self.calls), n, "sem nova busca nem novo download")
         self.assertEqual(again[0]["id"], 3)
+
+    def test_reads_the_key_from_the_local_file(self):
+        """A chave pode vir do arquivo `APIpixabay` (Bloco de Notas) em vez da variável de ambiente."""
+        from store_samples import TOALHA
+        d = TMP / "keyfile"
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "APIpixabay.txt").write_text(f"chave: {FILE_KEY}", encoding="utf-8")
+        cfg = copy.deepcopy(self.cfg)
+        cfg["broll"]["key_file"] = str(d / "APIpixabay")
+        os.environ.pop("PIXABAY_API_KEY")                      # sem variável: só o arquivo
+        out = self.broll.prepare_broll(fake_brief_with_use(TOALHA, "Toalha de Capivara 70x130cm"), cfg, LOG)
+        self.assertEqual(len(out), 1)
+        self.assertEqual(self.calls[0]["key"], FILE_KEY, "a chave do arquivo é a que vai para a API")
 
     def test_no_key_or_disabled_means_no_network(self):
         from store_samples import TOALHA
@@ -734,6 +752,88 @@ class TestBroll(unittest.TestCase):
         sb4 = copy.deepcopy(sb)
         next(s for s in sb4["scenes"] if s.get("clip"))["clip"]["user"] = ""
         self.assertFalse(V.validate(job / "video.mp4", sb4, bf, self.cfg, rr, ar)["ok"])
+
+
+class TestSecrets(unittest.TestCase):
+    """Chave do Pixabay em arquivo local (fora do git): leitura, vazamento e varredura."""
+
+    def setUp(self):
+        self.d = TMP / f"sec-{id(self)}"
+        self.d.mkdir(parents=True, exist_ok=True)
+        os.environ.pop("PIXABAY_API_KEY", None)
+
+    def read(self, **kw):
+        import localsecrets as L
+        return L.read_secret("PIXABAY_API_KEY", ["APIpixabay"], L.PIXABAY_KEY, base=self.d)
+
+    def test_file_formats_from_notepad(self):
+        cases = {
+            "APIpixabay": FILE_KEY,                                                        # só a chave, sem extensão
+            "APIpixabay.txt": f"chave: {FILE_KEY}\n",                                      # Bloco de Notas esconde o .txt
+            "APIpixabay.txt.txt": f"# minha chave\nkey={FILE_KEY} (Pixabay)\n\n",         # comentário e linhas extras
+        }
+        for name, content in cases.items():
+            for f in self.d.glob("APIpixabay*"):
+                f.unlink()
+            (self.d / name).write_text(content, encoding="utf-8")
+            val, origin = self.read()
+            self.assertEqual(val, FILE_KEY, name)
+            self.assertIn("arquivo", origin)
+            self.assertNotIn(FILE_KEY, origin, "a origem descreve o arquivo, nunca o valor")
+        for f in self.d.glob("APIpixabay*"):
+            f.unlink()
+        (self.d / "APIpixabay").write_bytes(b"\xef\xbb\xbf" + FILE_KEY.encode())              # UTF-8 com BOM
+        self.assertEqual(self.read()[0], FILE_KEY)
+        (self.d / "APIpixabay").write_bytes(FILE_KEY.encode("utf-16"))                      # UTF-16 (Bloco de Notas antigo)
+        self.assertEqual(self.read()[0], FILE_KEY)
+
+    def test_missing_invalid_and_env_priority(self):
+        self.assertEqual(self.read(), (None, ""))
+        (self.d / "APIpixabay").write_text("cole a chave aqui", encoding="utf-8")
+        self.assertEqual(self.read()[0], None, "texto sem uma chave no formato esperado não é aceito")
+        (self.d / "APIpixabay").write_text(FILE_KEY, encoding="utf-8")
+        os.environ["PIXABAY_API_KEY"] = "da-variavel"
+        try:
+            self.assertEqual(self.read(), ("da-variavel", "variável PIXABAY_API_KEY"))
+        finally:
+            os.environ.pop("PIXABAY_API_KEY")
+
+    def test_logs_and_errors_never_contain_the_key(self):
+        from common import logs_dir, redact
+        secret = "ZZ-SEGREDO-123"
+        self.assertEqual(redact(f"GET /api/videos/?key={secret}&q=praia"), "GET /api/videos/?key=***&q=praia")
+        self.assertEqual(redact(f"token={secret} password={secret}"), "token=*** password=***")
+        log = Logger("sec-test", echo=False)
+        log.warn(f"falhou https://x/api?key={secret}&q=1", erro=f"url=https://x/?apikey={secret}")
+        text = "".join(p.read_text(encoding="utf-8") for p in logs_dir().glob("*.jsonl"))
+        self.assertNotIn(secret, text)
+        self.assertIn("key=***", text)
+        http_ = pf.Http(load_config(), LOG)
+        with self.assertRaises(PipelineError) as cm:                       # porta fechada: o erro do requests traz a URL inteira
+            http_.get_json("http://127.0.0.1:9/api/videos/", {"key": secret, "q": "praia"}, ttl_hours=0)
+        self.assertNotIn(secret, str(cm.exception))
+
+    def test_no_secret_in_project_files(self):
+        """Falha se uma chave (Pixabay/ElevenLabs/service_role) aparecer em qualquer arquivo versionável da skill."""
+        from common import SKILL_DIR
+        pats = [re.compile(r"\b\d{6,}-[0-9a-f]{20,}\b"), re.compile(r"\bsk_[0-9a-f]{24,}\b"),
+                re.compile(r"service_role[\"'\s:=]+eyJ"), re.compile(r"\bxi-api-key\s*[:=]\s*[0-9a-f]{20,}", re.I)]
+        skip = {"work", "cache", "output", "logs", ".venv", "__pycache__"}
+        ign = (SKILL_DIR / ".gitignore").read_text(encoding="utf-8")
+        for needle in ("APIpixabay", "*.key", ".env"):
+            self.assertIn(needle, ign, f".gitignore precisa ignorar {needle}")
+        bad = []
+        for p in SKILL_DIR.rglob("*"):
+            if p.is_dir() or skip & set(p.relative_to(SKILL_DIR).parts) or p.name.startswith("APIpixabay") or p.suffix in (".ttf", ".jpg", ".png", ".pyc", ".mp4"):
+                continue
+            try:
+                text = p.read_text(encoding="utf-8", errors="ignore")
+            except OSError:
+                continue
+            for pat in pats:
+                if pat.search(text):
+                    bad.append(f"{p.relative_to(SKILL_DIR)} ~ {pat.pattern[:30]}")
+        self.assertEqual(bad, [], "possível segredo em arquivo do projeto")
 
 
 class TestStoryboard(unittest.TestCase):

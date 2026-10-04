@@ -166,6 +166,14 @@ def iso(ts: dt.datetime | None = None) -> str:
 # ----------------------------------------------------------------------------
 # Logs
 # ----------------------------------------------------------------------------
+_REDACT = re.compile(r"((?:api[_-]?key|key|token|secret|password|passwd)=)[^&\s'\")]+", re.I)
+
+
+def redact(text) -> str:
+    """Esconde valores de chave em URLs/mensagens (ex.: '...?key=ABC&q=x' → '...?key=***&q=x')."""
+    return _REDACT.sub(r"\1***", text) if isinstance(text, str) else text
+
+
 class Logger:
     """Log JSONL (auditoria) + linha legível em stdout/arquivo diário."""
 
@@ -175,8 +183,8 @@ class Logger:
         self.echo = echo
 
     def event(self, level: str, msg: str, **fields) -> dict:
-        rec = {"ts": iso(), "level": level, "job": self.job, "msg": msg}
-        rec.update({k: v for k, v in fields.items() if v is not None})
+        rec = {"ts": iso(), "level": level, "job": self.job, "msg": redact(msg)}
+        rec.update({k: redact(v) for k, v in fields.items() if v is not None})
         line = json.dumps(rec, ensure_ascii=False)
         day = now().strftime("%Y-%m-%d")
         for target in filter(None, [logs_dir() / f"{day}.jsonl", self.extra_file]):
@@ -184,7 +192,7 @@ class Logger:
             with open(target, "a", encoding="utf-8") as f:
                 f.write(line + "\n")
         if self.echo:
-            extra = " ".join(f"{k}={v}" for k, v in fields.items() if v is not None and k != "trace")
+            extra = " ".join(f"{k}={redact(v)}" for k, v in fields.items() if v is not None and k != "trace")
             print(f"[{rec['ts']}] {level:<5} {self.job or '-':<22} {msg} {extra}".rstrip(), file=sys.stderr)
         return rec
 

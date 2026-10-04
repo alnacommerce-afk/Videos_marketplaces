@@ -104,7 +104,9 @@ Não implementado de propósito: relógios/time-remap com urgência (pode sugeri
 
 Cortes curtos (≈2–3 s) de vídeo livre que **ilustram um uso que a loja já confirma**, para o vídeo não ser só foto. Opcional: sem chave, sem tema ou sem rede, o vídeo sai só com as fotos.
 
-- **Chave:** variável de ambiente `PIXABAY_API_KEY` (`setx PIXABAY_API_KEY "sua-chave"`, depois reabra o terminal). Chave gratuita em pixabay.com/api/docs. **Nunca grave a chave em arquivo do projeto.** Se ela foi colada em conversa ou arquivo, use o botão *Rotate* da página da API e atualize a variável.
+- **Chave (duas formas, nesta ordem):** (1) variável de ambiente `PIXABAY_API_KEY`; (2) um arquivo de texto **`APIpixabay`** (pode ser `APIpixabay.txt`, o Bloco de Notas esconde a extensão) na pasta da skill, com a chave dentro. O arquivo aceita só a chave, `chave: XXXX` ou `key=XXXX`, com comentários e linhas extras, em UTF-8/UTF-16/ANSI. Chave gratuita em pixabay.com/api/docs.
+  - **Segurança:** o arquivo está no `.gitignore` (`APIpixabay*`, `*.key`, `.env`), os logs e mensagens de erro escondem qualquer `key=...`, e um teste falha se uma chave aparecer em arquivo do projeto. O `doctor` mostra **de onde** a chave foi lida, nunca o valor.
+  - **Cuidados seus:** não zipe nem envie a pasta da skill com o arquivo dentro; se a chave for exposta (colada em conversa, e-mail), use o botão *Rotate* na página da API e atualize o arquivo. Não criptografamos o arquivo de propósito: sem uma proteção do sistema, a "criptografia" com a chave ao lado seria só aparência. Para chaves de acesso pago (ElevenLabs) o ideal é a proteção do próprio Windows (DPAPI), que podemos adicionar.
 - **Tema:** sai só de palavras de fatos confirmados do tipo `use` ("Ideal para **praia, piscina, academia, viagens**") → temas `praia`, `piscina`, `academia`, `viagem`, `caminhada`, `danca`, `cozinha`, `banho`, `yoga`, `camping`, `jardim`. Frase de marketing que não é fato de uso não gera busca. A busca usa `lang=pt` e cai para inglês.
 - **Regras de segurança (reprovam o vídeo se violadas):** o texto da cena é o fato de USO literal (nunca material/medida/característica); rótulo **"Imagem ilustrativa"** visível; origem (id, autor, link) registrada; no máximo `broll.max_per_video` (1); tags com criança/bebê são descartadas; clipe cujas tags batem com o próprio produto (ex.: `towel` numa toalha) é descartado, porque mostraria **outro** produto.
 - **Onde aparece:** arquétipos PRODUCT_HERO, FEATURE_SHOWCASE, BENEFIT_SHOWCASE e PRODUCT_DISCOVERY têm uma cena opcional `AMBIENT` que some quando não há clipe; LIFESTYLE, DEMONSTRATION e HOW_TO_USE já têm cena de uso.
@@ -195,7 +197,7 @@ Movimentos: push-in, pull-out, pan H/V, diagonal, dolly (ease in-out), crop reve
 | Sintoma | Causa provável / solução |
 |---|---|
 | `API da loja indisponível` | O pipeline cai sozinho para o HTML (veja o aviso no log). Se for chave errada: confira `config.store.supabase.publishable_key` ou a variável `ALNA_SUPABASE_KEY`. |
-| Sem clipes de ambiente | `python doctor.py` mostra se `PIXABAY_API_KEY` está configurada; veja no log `b-roll indisponível` / `nenhum clipe adequado`. |
+| Sem clipes de ambiente | `python doctor.py` mostra de onde a chave do Pixabay foi lida (variável ou arquivo `APIpixabay`); veja no log `b-roll indisponível` / `nenhum clipe adequado`. |
 | `Nenhum produto encontrado em .../loja` | A API falhou e o HTML não traz produtos. Use `python product_fetcher.py diagnose` ou `--catalog`. |
 | `robots.txt não permite` | Respeitamos o robots.txt. Use catálogo manual. |
 | `'ffmpeg' não encontrado` | `winget install Gyan.FFmpeg` e reabra o terminal. |

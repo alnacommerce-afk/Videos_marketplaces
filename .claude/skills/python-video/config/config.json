@@ -161,7 +161,7 @@
     "audio_bitrate": "192k"
   },
   "broll": {
-    "_doc": "Cortes curtos de AMBIENTE (Pixabay) que ilustram um uso confirmado pela loja. A chave vem da variável de ambiente PIXABAY_API_KEY (nunca neste arquivo).",
+    "_doc": "Cortes curtos de AMBIENTE (Pixabay) que ilustram um uso confirmado pela loja. A chave vem da variável PIXABAY_API_KEY ou do arquivo local APIpixabay (na pasta da skill, ignorado pelo git). NUNCA coloque a chave neste arquivo.",
     "enabled": true,
     "provider": "pixabay",
     "key_env": "PIXABAY_API_KEY",
@@ -184,6 +184,7 @@
       "toddler",
       "teen"
     ],
-    "label": "Imagem ilustrativa"
+    "label": "Imagem ilustrativa",
+    "key_file": "APIpixabay"
   }
 }

@@ -6,3 +6,10 @@ output/
 __pycache__/
 *.pyc
 config/voice.lock.json
+
+# segredos locais (chaves de API): nunca versionar
+APIpixabay*
+API*.txt
+*.key
+secrets/
+.env
