@@ -223,6 +223,8 @@ class TestOps(unittest.TestCase):
     def test_doctor_runs(self):
         import doctor
         doctor.ROWS.clear()
+        # a tarefa agendada só existe depois da instalação: aqui não faz parte do que o teste verifica
+        doctor.check_task = lambda: doctor.add("OK", "Tarefa agendada", "(ignorada no teste)")
         rc = doctor.main(["--offline"])
         self.assertEqual(rc, 0, doctor.ROWS)
         self.assertTrue(any(r[1] == "FFmpeg" and r[0] == "OK" for r in doctor.ROWS))
@@ -476,7 +478,9 @@ class TestGraphics(unittest.TestCase):
     def test_fonts_and_contrast(self):
         import graphics as g
         cfg = load_config()
-        path, fam = g.find_font(cfg, Path(cfg["paths"]["fonts_dir"]))
+        from common import fonts_dir
+        path, fam = g.find_font(cfg, fonts_dir(cfg))
+        self.assertEqual(fam, "Inter", "a Inter que acompanha a skill é a fonte escolhida")
         self.assertTrue(Path(path).exists(), fam)
         self.assertGreater(g.contrast_ratio((255, 255, 255), (0, 0, 0)), 20)
         self.assertLess(g.contrast_ratio((255, 255, 255), (250, 250, 250)), 1.2)

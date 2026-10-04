@@ -18,7 +18,9 @@ from camera import ease_in_out, ease_out_back, ease_out_cubic
 # ----------------------------------------------------------------------------
 # Fontes
 # ----------------------------------------------------------------------------
-_FONT_INDEX: dict[str, str] | None = None
+_FONT_INDEXES: dict[tuple, dict[str, str]] = {}
+_BOLD_FILES = {"Segoe UI": ["segoeuib.ttf"], "Arial": ["arialbd.ttf"], "Calibri": ["calibrib.ttf"],
+               "Liberation Sans": ["liberationsans-bold.ttf"], "DejaVu Sans": ["dejavusans-bold.ttf"], "Roboto": ["roboto-bold.ttf"]}
 _BAD = ("italic", "oblique", "light", "thin", "hairline", "extralight", "condensed", "narrow", "mono", "serif", "symbol")
 
 
@@ -37,10 +39,16 @@ def _index_fonts(dirs: list[Path]) -> dict[str, str]:
 
 def find_font(cfg: dict, fonts_dir: Path, bold: bool = True) -> tuple[str, str]:
     """Escolhe a primeira família disponível da lista de prioridade. Retorna (caminho, família)."""
-    global _FONT_INDEX
-    if _FONT_INDEX is None:
-        _FONT_INDEX = _index_fonts([fonts_dir] + [Path(p) for p in cfg["fonts"]["system_dirs"]])
+    dirs = [Path(fonts_dir)] + [Path(p) for p in cfg["fonts"]["system_dirs"]]
+    key = tuple(str(d) for d in dirs)
+    if key not in _FONT_INDEXES:
+        _FONT_INDEXES[key] = _index_fonts(dirs)
+    _FONT_INDEX = _FONT_INDEXES[key]
     for family in cfg["fonts"]["priority"]:
+        if bold:  # nomes de arquivo "negrito" que não contêm a palavra bold (ex.: segoeuib.ttf)
+            for alt in _BOLD_FILES.get(family, []):
+                if alt in _FONT_INDEX:
+                    return _FONT_INDEX[alt], family
         key = re.sub(r"[\s-]", "", family.lower())
         cands = []
         for fn, path in _FONT_INDEX.items():
