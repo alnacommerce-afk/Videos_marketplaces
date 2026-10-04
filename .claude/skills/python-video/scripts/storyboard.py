@@ -180,6 +180,26 @@ def continuity_stats(scenes: list[dict]) -> dict:
 
 
 # ----------------------------------------------------------------------------
+# Escolha de foto por papel (texto alternativo publicado na loja)
+# ----------------------------------------------------------------------------
+ARCH_IMAGE_PREF = {"LIFESTYLE": "lifestyle", "PRODUCT_DEMONSTRATION": "lifestyle", "HOW_TO_USE": "lifestyle",
+                   "UNBOXING": "packaging", "GIFT_ANGLE": "packaging"}
+
+
+def pick_image(shot: str, archetype: str, imgs: list[dict], last_img: int, used: set, rng: random.Random) -> int:
+    """Planos 'hero' usam a capa (produto claro e dominante). Planos de detalhe/macro preferem fotos cujo texto
+    alternativo diz 'close/detalhe/textura'; o segundo detalhe segue a preferência do arquétipo (ex.: foto de uso
+    para LIFESTYLE). Evita repetir a foto anterior e prefere as ainda não usadas. Só decide ENQUADRAMENTO."""
+    if shot.startswith("hero") or len(imgs) == 1:
+        return 0
+    want = ARCH_IMAGE_PREF.get(archetype) if shot == "detail2" else "detail"
+    cands = [i for i in range(len(imgs)) if i != last_img] or list(range(len(imgs)))
+    preferred = [i for i in cands if want and imgs[i].get("role") == want] or cands
+    fresh = [i for i in preferred if i not in used] or preferred
+    return rng.choice(fresh)
+
+
+# ----------------------------------------------------------------------------
 # Construção
 # ----------------------------------------------------------------------------
 def _frames(seconds: float, fps: int) -> int:
@@ -244,17 +264,13 @@ def build_storyboard(brief: dict, cfg: dict, archetype: str, seed: int | None = 
 
     scenes, t, last_img, detail_i = [], 0.0, -1, 0
     mom = None  # impulso de câmera da cena anterior
+    used_imgs: set = set()
     notes: list[str] = []
     for i, (beat, dur) in enumerate(zip(beats, durs)):
         shot = beat["shot"]
         # imagem: planos "hero*" usam a capa; detalhes giram pelas demais (variedade de fotos)
-        if shot.startswith("hero") or len(imgs) == 1:
-            img_i = 0
-        else:
-            detail_i += 1
-            img_i = (rng.randrange(len(imgs)) + detail_i) % len(imgs) if len(imgs) > 1 else 0
-            if img_i == last_img and len(imgs) > 1:
-                img_i = (img_i + 1) % len(imgs)
+        img_i = pick_image(shot, archetype, imgs, last_img, used_imgs, rng)
+        used_imgs.add(img_i)
         move = choose_move(beat["move"], mom, rng)
         pan_dir = mom[1] if (mom and mom[0] == _AXIS.get(move) and move in ("pan_h", "diagonal", "pan_v")) else None
         transition = beat.get("transition", "hard_cut")

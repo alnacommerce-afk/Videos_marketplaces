@@ -155,6 +155,7 @@ class TestFetcher(unittest.TestCase):
         threading.Thread(target=cls.srv.serve_forever, daemon=True).start()
         cls.cfg = load_config()
         cls.cfg["store"].update({"base_url": f"http://127.0.0.1:{cls.srv.server_port}", "min_delay_s": 0.0})
+        cls.cfg["store"]["supabase"]["enabled"] = False       # estes testes exercitam a leitura das páginas HTML
 
     @classmethod
     def tearDownClass(cls):
@@ -351,6 +352,159 @@ class TestStructureTechniques(unittest.TestCase):
         w = int(0.4 * 48000)
         self.assertGreater(min(20 * np.log10(float(np.sqrt((pcm[i * w:(i + 1) * w] ** 2).mean())) + 1e-9)
                                for i in range(1, len(pcm) // w - 1)), -60.0)
+
+
+class TestRealStoreDescriptions(unittest.TestCase):
+    """Regressão com descrições REAIS da loja (tests/store_samples.py)."""
+
+    def facts(self, desc):
+        f, miss = pf.build_facts({"name": "x", "description": desc, "price": {"value": "22.86", "currency": "BRL"}})
+        return {x["text"]: x for x in f}, f
+
+    def test_toalha_each_line_is_its_own_literal_fact(self):
+        from store_samples import TOALHA
+        by, allf = self.facts(TOALHA)
+        self.assertEqual(by["Tamanho: 70 x 130 cm"]["kind"], "dimension")
+        self.assertEqual(by["Composição: Algodão com Poliéster"]["kind"], "material")
+        self.assertEqual(by["Gramatura: 200g"]["display"], "Gramatura: 200g")
+        self.assertEqual(by["Ideal para praia, piscina, academia, viagens e uso diário"]["kind"], "use")
+        self.assertEqual(by["1 Toalha de Capivaras 70 x 130 cm – 200g"]["kind"], "contents")
+        self.assertFalse(by["Observação: a tonalidade das cores pode apresentar pequenas variações conforme a iluminação e a tela do dispositivo"]["usable"])
+        for f in allf:   # todo fato é trecho literal da descrição publicada
+            if f["kind"] != "price":
+                self.assertIn(f["text"].replace(" ", ""), TOALHA.replace(" ", "").replace("\n", ""), f["text"])
+
+    def test_headings_never_become_facts(self):
+        from store_samples import TOALHA, TOP
+        for d in (TOALHA, TOP):
+            _, allf = self.facts(d)
+            for f in allf:
+                self.assertFalse(f["text"].startswith(("Para quem", "Dois lados", "M 24", "Conteúdo da", "Características", "Medidas aproximadas")), f["text"])
+
+    def test_approximate_measures_are_not_shown_as_exact(self):
+        from store_samples import TOP
+        by, _ = self.facts(TOP)
+        f = by["Tamanho M: 24 cm de largura × 12 cm de altura"]
+        self.assertTrue(f["approx"] and f["display"].startswith("Aprox. "))
+        self.assertIn("Aprox. Tamanho G: 27 cm de largura × 14 cm de altura", [x["display"] for x in by.values()])
+
+    def test_unverifiable_comparatives_are_held(self):
+        from store_samples import TOP
+        _, allf = self.facts(TOP)
+        held = [f for f in allf if f["risk"]]
+        self.assertTrue(any("melhor adaptação" in f["text"] for f in held))
+        self.assertTrue(all(not f["usable"] for f in held))
+
+    def test_last_line_without_period_is_not_swallowed(self):
+        by, _ = self.facts("Medidas: 30 x 40 cm\nIdeal para o dia a dia.")
+        self.assertIn("Ideal para o dia a dia", by)
+        by, _ = self.facts("Toalha de teste.\nCompre agora com frete grátis")
+        self.assertTrue(by["Compre agora com frete grátis"]["risk"], "trecho de risco é registrado, não descartado em silêncio")
+
+
+class TestStoreApi(unittest.TestCase):
+    """API pública da loja (PostgREST/Supabase) simulada localmente com o mesmo formato de resposta."""
+
+    @classmethod
+    def setUpClass(cls):
+        from store_samples import TOALHA, TOP
+        root = TMP / "api"
+        for n, hue in (("a", (200, 60, 60)), ("b", (60, 90, 200)), ("c", (60, 160, 90)), ("d", (200, 160, 60))):
+            make_photo(root / f"{n}.jpg", hue=hue, seed=ord(n))
+        cls.rows = [
+            {"id": "u1", "title": "Toalha de Capivara 70x130cm 200g Sublimação", "slug": "toalha-capivara", "description": TOALHA,
+             "status": "published", "video_url": None, "category": {"name": "Banho"},
+             "product_images": [{"storage_path": "u1/a.jpg", "alt_text": "Toalha dobrada mostrando a estampa completa", "position": 0},
+                                {"storage_path": "u1/b.jpg", "alt_text": "Close na textura da toalha", "position": 1},
+                                {"storage_path": "u1/c.jpg", "alt_text": "Pessoa usando a toalha após o banho", "position": 2},
+                                {"storage_path": "u1/d.jpg", "alt_text": "Embalagem da toalha pronta para presente", "position": 3}],
+             "product_variants": [{"name": "Toalha de Capivaras", "price_cents": 2286, "stock_quantity": 10}]},
+            {"id": "u2", "title": "Top Feminino Esgotado", "slug": "top-esgotado", "description": TOP, "status": "published",
+             "video_url": None, "category": None,
+             "product_images": [{"storage_path": "u2/a.jpg", "alt_text": "Top", "position": 0}],
+             "product_variants": [{"name": "TOP M", "price_cents": 1583, "stock_quantity": 0}, {"name": "TOP G", "price_cents": 1583, "stock_quantity": 0}]}]
+        cls.seen = []
+        rows, seen = cls.rows, cls.seen
+        files = {"/storage/v1/object/public/product-media/u1/" + n + ".jpg": (root / f"{n}.jpg").read_bytes() for n in "abcd"}
+        files["/storage/v1/object/public/product-media/u2/a.jpg"] = (root / "a.jpg").read_bytes()
+
+        class H(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                path = self.path.split("?")[0]
+                if path == "/rest/v1/products":
+                    seen.append(self.headers.get("apikey"))
+                    if self.headers.get("apikey") != "test-key":
+                        self.send_response(401); self.end_headers(); return
+                    body, ct = json.dumps(rows).encode(), "application/json"
+                elif path in files:
+                    body, ct = files[path], "image/jpeg"
+                else:
+                    self.send_response(404); self.end_headers(); return
+                self.send_response(200); self.send_header("Content-Type", ct); self.send_header("Content-Length", str(len(body))); self.end_headers()
+                self.wfile.write(body)
+            def log_message(self, *a): pass
+        cls.srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), H)
+        threading.Thread(target=cls.srv.serve_forever, daemon=True).start()
+        cls.cfg = load_config()
+        cls.cfg["store"].update({"min_delay_s": 0.0})
+        cls.cfg["store"]["supabase"].update({"enabled": True, "url": f"http://127.0.0.1:{cls.srv.server_port}", "publishable_key": "test-key"})
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.srv.shutdown()
+
+    def test_reads_structured_products_with_stock_and_image_roles(self):
+        raws = pf.list_products(self.cfg, LOG)
+        self.assertEqual([r["source"] for r in raws], ["api", "api"])
+        self.assertIn("test-key", self.seen)
+        toalha = raws[0]
+        self.assertEqual(toalha["stock"], 10)
+        self.assertEqual(toalha["url"].rsplit("/", 2)[-2:], ["produto", "toalha-capivara"])
+        roles = [toalha["image_meta"][u]["role"] for u in toalha["images"]]
+        self.assertEqual(roles, ["product", "detail", "lifestyle", "packaging"])
+        self.assertEqual(toalha["price"]["value"], "22.86")
+        self.assertEqual(raws[1]["stock"], 0)
+
+    def test_brief_keeps_alt_text_and_role(self):
+        raws = pf.list_products(self.cfg, LOG)
+        brief = pf.get_brief(raws[0], self.cfg, LOG)
+        imgs = brief["product"]["images"]
+        self.assertEqual([i["role"] for i in imgs], ["product", "detail", "lifestyle", "packaging"])
+        self.assertIn("Close na textura", imgs[1]["alt"])
+        self.assertEqual(brief["product"]["stock"], 10)
+        self.assertIn("Tamanho: 70 x 130 cm", [f["text"] for f in brief["confirmed_facts"] if f["usable"]])
+
+    def test_out_of_stock_products_get_no_video(self):
+        import scheduler as S
+        raws = pf.list_products(self.cfg, LOG)
+        kept = S.in_stock(raws, self.cfg, LOG)
+        self.assertEqual([r["name"] for r in kept], ["Toalha de Capivara 70x130cm 200g Sublimação"])
+        cfg2 = copy.deepcopy(self.cfg)
+        cfg2["daily"]["skip_out_of_stock"] = False
+        self.assertEqual(len(S.in_stock(raws, cfg2, LOG)), 2)
+
+    def test_detail_shots_prefer_detail_photos(self):
+        raws = pf.list_products(self.cfg, LOG)
+        brief = pf.get_brief(raws[0], self.cfg, LOG)
+        for seed in range(1, 6):
+            sb = SB.build_storyboard(brief, self.cfg, "DETAIL_MACRO", seed)
+            hook = sb["scenes"][0]                            # plano macro
+            self.assertEqual(brief["product"]["images"][hook["image_index"]]["role"], "detail", seed)
+            for s in sb["scenes"]:
+                if s["camera"]["shot"].startswith("hero"):
+                    self.assertEqual(s["image_index"], 0, "planos hero usam a capa")
+
+    def test_wrong_key_or_dead_api_falls_back_to_html(self):
+        bad = copy.deepcopy(self.cfg)
+        bad["store"]["supabase"]["publishable_key"] = "chave-errada"
+        with self.assertRaises(PipelineError):
+            pf.list_products(bad, LOG, source="api")
+        dead = copy.deepcopy(self.cfg)
+        dead["store"]["supabase"]["url"] = "http://127.0.0.1:9"
+        dead["store"]["base_url"] = "http://127.0.0.1:9"
+        with self.assertRaises(PipelineError) as cm:               # sem API e sem HTML: erro claro, não vídeo inventado
+            pf.list_products(dead, LOG)
+        self.assertTrue(str(cm.exception))
 
 
 class TestStoryboard(unittest.TestCase):

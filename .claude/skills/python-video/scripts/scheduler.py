@@ -90,6 +90,19 @@ def parse_hhmm(s: str, ref: dt.datetime) -> dt.datetime:
 # ----------------------------------------------------------------------------
 # Seleção
 # ----------------------------------------------------------------------------
+def in_stock(raws: list[dict], cfg: dict, log: Logger) -> list[dict]:
+    """Tira da fila produtos SEM estoque (quando a fonte informa o estoque). Produto esgotado não ganha vídeo."""
+    if not cfg["daily"].get("skip_out_of_stock", True):
+        return raws
+    keep = []
+    for r in raws:
+        if r.get("stock") is not None and r["stock"] <= 0:
+            log.warn("produto sem estoque: não recebe vídeo", produto=r.get("name"))
+        else:
+            keep.append(r)
+    return keep
+
+
 def rank_products(raws: list[dict], state: dict, day: str, cooldown: int, rng: random.Random) -> list[dict]:
     """Prefere produtos nunca usados / usados há mais tempo; respeita o cooldown quando há alternativa."""
     today = dt.date.fromisoformat(day)
@@ -157,6 +170,7 @@ def run_daily(cfg: dict | None = None, day: str | None = None, count: int | None
             else:
                 summary["errors"].append(f"catálogo indisponível: {e}")
                 return _finish(cfg, summary, log, state)
+        raws = in_stock(raws, cfg, log)
         rng = random.Random(day)
         ranked = rank_products(raws, state, day, dcfg["cooldown_days"], rng)
         if len(ranked) < len(todo):

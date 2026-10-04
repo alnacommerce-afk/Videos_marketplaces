@@ -26,7 +26,7 @@ Mentalidade: diretor de criação + redator + diretor de fotografia + motion des
 ## Fluxo
 
 ```
-store.alna.sale/loja ─► product_fetcher ─► Product Brief (fatos, imagens, ângulos)
+store.alna.sale ─► product_fetcher (API da loja → HTML) ─► Product Brief (fatos, imagens+papéis, estoque, ângulos)
                                               │
                          escolha do arquétipo ◄┘  (elegibilidade pelos fatos + variedade)
                                               ▼
@@ -67,6 +67,15 @@ python feedback.py summary          # médias por arquétipo / música / gancho
 python notify.py test               # testa o aviso (Telegram / e-mail)
 ```
 Opções úteis: `--voice auto|off|required` · `--format 9x16|4x5|1x1|16x9` · `--out PASTA` · `--no-deliver` · `--seed N`.
+
+## Fonte dos produtos (como a loja é lida)
+
+Ordem automática: **catálogo manual** (`--catalog`) → **API pública da própria loja** → **páginas HTML** (plano B se a API falhar).
+- **API da loja** (`config.store.supabase`): a mesma API que o site usa no navegador, com a chave *publishable* (feita para ficar no navegador e limitada pelas regras RLS: só vê produtos **publicados**, suas fotos e variações). Uma única consulta traz título, descrição **com as linhas originais**, fotos na ordem, texto alternativo das fotos, preço e **estoque**. Nunca coloque a chave `service_role` aqui.
+- **Estoque:** produto com estoque 0 não recebe vídeo (`daily.skip_out_of_stock`). Só a API informa estoque; no plano B (HTML) não dá para saber.
+- **Fatos da descrição:** lidos **linha a linha**. Cada linha vira um fato literal (`Tamanho: 70 x 130 cm`, `Composição: Algodão com Poliéster`, `Ideal para praia, piscina...`). Títulos e perguntas (`Para quem é?`, `Dois lados, duas funções`) **não viram fato**; `Observação:`/`Importante:` ficam registradas e **não são usadas**; medidas sob "aproximadas" aparecem como `Aprox. ...`; números sem unidade e comparativos não verificáveis (`melhor adaptação`) ficam retidos.
+- **Fotos:** o texto alternativo publicado na loja ("Close na textura…", "Pessoa usando…", "Embalagem… presente") define o **papel** da foto (`detail`, `lifestyle`, `packaging`, `product`). Planos de detalhe/macro preferem fotos `detail`; o segundo detalhe segue o arquétipo (LIFESTYLE/DEMONSTRATION/HOW_TO_USE → `lifestyle`; UNBOXING/GIFT → `packaging`); planos hero usam sempre a capa. O papel só escolhe **enquadramento**: nunca vira afirmação sobre o produto.
+- `python product_fetcher.py diagnose` mostra o que a API e o HTML devolvem e como os fatos foram classificados; `--source html|api|auto` força a fonte.
 
 ## Rotina automática (3 vídeos por madrugada)
 
@@ -174,7 +183,8 @@ Movimentos: push-in, pull-out, pan H/V, diagonal, dolly (ease in-out), crop reve
 
 | Sintoma | Causa provável / solução |
 |---|---|
-| `Nenhum produto encontrado em .../loja` | A loja é renderizada no navegador (SPA) e o HTML não traz produtos. Informe um endpoint JSON em `config.store.json_endpoint` ou use `--catalog`. |
+| `API da loja indisponível` | O pipeline cai sozinho para o HTML (veja o aviso no log). Se for chave errada: confira `config.store.supabase.publishable_key` ou a variável `ALNA_SUPABASE_KEY`. |
+| `Nenhum produto encontrado em .../loja` | A API falhou e o HTML não traz produtos. Use `python product_fetcher.py diagnose` ou `--catalog`. |
 | `robots.txt não permite` | Respeitamos o robots.txt. Use catálogo manual. |
 | `'ffmpeg' não encontrado` | `winget install Gyan.FFmpeg` e reabra o terminal. |
 | Vídeo sem narração | `ELEVENLABS_API_KEY`/`ELEVENLABS_VOICE_ID` ausentes (veja o log) ou `--voice off`. |

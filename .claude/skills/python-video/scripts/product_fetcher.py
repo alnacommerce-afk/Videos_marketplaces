@@ -15,6 +15,7 @@ import argparse
 import datetime as dt
 import hashlib
 import json
+import os
 import re
 import sys
 import time
@@ -82,6 +83,31 @@ class Http:
                 self._robots[host] = None
         rp = self._robots[host]
         return True if rp is None else rp.can_fetch(self.s["user_agent"], url)
+
+    def get_json(self, url: str, params: dict | None = None, headers: dict | None = None, ttl_hours: float = 1.0):
+        """GET de uma API JSON (usa cache curto: o estoque muda). Respeita o intervalo mínimo entre requisições."""
+        from urllib.parse import urlencode
+        full = url + ("?" + urlencode(params) if params else "")
+        key = hashlib.sha1((full + json.dumps(sorted((headers or {}).items()))).encode()).hexdigest()  # chave errada não pega cache da certa
+        cf = self.cache / f"{key}.api.json"
+        if cf.exists() and (self.offline or (time.time() - cf.stat().st_mtime) / 3600 <= ttl_hours):
+            return json.loads(cf.read_text(encoding="utf-8"))
+        if self.offline:
+            raise PipelineError(f"Modo offline e sem cache para {url}")
+        wait = self.s["min_delay_s"] - (time.time() - self._last)
+        if wait > 0:
+            time.sleep(wait)
+        self._last = time.time()
+        try:
+            r = self.session.get(full, headers=headers or {}, timeout=self.s["timeout_s"])
+        except self.requests.RequestException as e:
+            raise PipelineError(f"Falha de rede em {url}: {e}") from e
+        if r.status_code != 200:
+            raise PipelineError(f"API HTTP {r.status_code} em {url}: {r.text[:160]}")
+        r.encoding = "utf-8"
+        data = r.json()
+        cf.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        return data
 
     def get(self, url: str, binary: bool = False, ttl_hours: float | None = None):
         ttl = self.s["cache_ttl_hours"] if ttl_hours is None else ttl_hours
@@ -374,6 +400,55 @@ def discover_product_urls(http: Http, cfg: dict, logger: Logger) -> list[str]:
 
 
 # ----------------------------------------------------------------------------
+# API da própria loja (Supabase/PostgREST): dados estruturados, com estoque e ordem das fotos
+# ----------------------------------------------------------------------------
+IMAGE_ROLE_HINTS = [  # (papel, regex no texto alternativo da foto) — só ajuda a escolher o ENQUADRAMENTO
+    ("detail", r"\b(close|detalhe|textura|zoom|macro|costura|acabamento)\b"),
+    ("packaging", r"\b(embalagem|caixa|presente|kit)\b"),
+    ("lifestyle", r"\b(pessoa|usando|mulher|homem|mesa|cozinha|praia|ambiente|estendid\w+|sobre|ao lado)\b"),
+]
+
+
+def image_role(alt: str) -> str:
+    for role, pat in IMAGE_ROLE_HINTS:
+        if re.search(pat, alt or "", re.I):
+            return role
+    return "product"
+
+
+def supabase_products(cfg: dict, logger: Logger, offline: bool = False) -> list[dict] | None:
+    """Lê os produtos PUBLICADOS pela API pública da loja. Retorna None se a API não estiver configurada."""
+    sb = cfg["store"].get("supabase") or {}
+    key = os.environ.get(sb.get("key_env", ""), "") or sb.get("publishable_key", "")
+    if not (sb.get("enabled") and sb.get("url") and key):
+        return None
+    http = Http(cfg, logger, offline=offline)
+    select = ("id,title,slug,description,status,video_url,category:categories(name),"
+              "product_images(storage_path,alt_text,position),product_variants(name,price_cents,stock_quantity)")
+    rows = http.get_json(sb["url"].rstrip("/") + "/rest/v1/products",
+                         {"select": select, "status": "eq.published", "order": "created_at.desc",
+                          "limit": str(cfg["store"]["max_products"])},
+                         headers={"apikey": key, "Accept": "application/json"})
+    base = cfg["store"]["base_url"].rstrip("/")
+    prefix = f"{sb['url'].rstrip('/')}/storage/v1/object/public/{sb.get('bucket', 'product-media')}/"
+    out = []
+    for r in rows:
+        imgs = sorted(r.get("product_images") or [], key=lambda i: i.get("position", 0))
+        variants = r.get("product_variants") or []
+        prices = [v["price_cents"] for v in variants if v.get("price_cents") is not None]
+        meta = {prefix + i["storage_path"]: {"alt": i.get("alt_text") or "", "role": image_role(i.get("alt_text") or ""),
+                                              "position": i.get("position", 0)} for i in imgs}
+        out.append({"id": r["slug"], "name": r["title"], "category": (r.get("category") or {}).get("name", ""),
+                    "url": f"{base}/produto/{r['slug']}", "images": list(meta), "image_meta": meta,
+                    "description": r.get("description") or "", "attributes": [],
+                    "price": {"value": f"{min(prices) / 100:.2f}", "currency": "BRL"} if prices else None,
+                    "stock": sum(v.get("stock_quantity") or 0 for v in variants) if variants else None,
+                    "variants": [v.get("name") for v in variants], "video_url": r.get("video_url"), "source": "api"})
+    logger.info("produtos lidos pela API da loja", count=len(out), sem_estoque=sum(1 for p in out if p["stock"] == 0))
+    return out
+
+
+# ----------------------------------------------------------------------------
 # Fatos
 # ----------------------------------------------------------------------------
 _EMOJI = re.compile("[\U00010000-\U0010ffff☀-➿⬀-⯿️‍]")
@@ -406,21 +481,95 @@ def classify(text: str) -> str:
 
 MAX_DISPLAY = 64
 
+_BULLET_START = re.compile(r"^\s*([•·▪●○◦■□✔✅✓☑➤➔→\-–—*]|[\U00010000-\U0010ffff]|[\u2600-\u27bf\u2b00-\u2bff])")
+_NOTE_START = re.compile(r"^(observa[cç][aã]o|importante|aten[cç][aã]o|aviso|obs\b\.?)\s*:?", re.I)
+_LABEL_KIND = [
+    (r"^(tamanho|medidas?|dimens\w+|largura|altura|comprimento|profundidade|di[aâ]metro|capacidade)\b", "dimension"),
+    (r"^(composi\w+|material|tecido)\b", "material"),
+    (r"^(cor|cores)\b", "color"),
+    (r"^(conte[úu]do|itens inclu\w+|acompanha)\b", "contents"),
+    (r"^(gramatura|peso)\b", "characteristic"),
+]
+_HAS_UNIT = re.compile(r"\b\d+[.,]?\d*\s*(cm|mm|m|kg|g|ml|l|litros?|metros?|un|unidades?)\b|\d+\s*[x×]\s*\d+", re.I)
+
+
+def parse_description(desc: str) -> list[dict]:
+    """Lê a descrição PRESERVANDO a estrutura (linhas, títulos, marcadores) e devolve unidades literais:
+    {text, kind, approx, note, drop}. Títulos/perguntas ('Para quem é?', 'Dois lados, duas funções') não viram fato;
+    observações ('Observação: ...') ficam registradas mas não são usadas no vídeo; medidas sem unidade são retidas."""
+    lines = desc.splitlines()
+    n, section, out = len(lines), "", []
+    for i, raw in enumerate(lines):
+        s = raw.strip()
+        if not s:
+            continue
+        text = clean_display(s)
+        if len(text) < 3:
+            continue
+        had_bullet = bool(_BULLET_START.match(s))
+        prev_blank = i == 0 or not lines[i - 1].strip()
+        next_blank = i + 1 >= n or not lines[i + 1].strip()
+        words = len(text.split())
+        raw_end = _BULLET_START.sub("", s).rstrip()  # clean_display tira ".:" do fim: a pontuação vem da linha ORIGINAL
+        no_stop = not re.search(r"[.!]$", raw_end)
+        mid_colon = ":" in raw_end.rstrip(":")
+        substantive = bool(RISK_PATTERN.search(text) or _HAS_UNIT.search(text))  # medida ou trecho de risco nunca é "só um título"
+        heading = (raw_end.endswith("?") or raw_end.endswith(":")
+                   or (not substantive and next_blank and not had_bullet and words <= 8 and no_stop and not mid_colon)
+                   or (not substantive and prev_blank and next_blank and words <= 14 and no_stop and not mid_colon))
+        if heading:
+            section = text.rstrip(":?").strip().lower()
+            continue
+        if _NOTE_START.match(text):
+            out.append({"text": text, "kind": "note", "approx": False, "note": True, "drop": "observação (não usada em vídeo)"})
+            continue
+        pieces = [text]
+        if not had_bullet and (words > 14 or not no_stop):  # parágrafo: vira frases
+            pieces = [p.strip() for p in re.split(r"(?<=[.!])\s+(?=[A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9])", text) if len(p.strip()) >= 4]
+        for piece in pieces:
+            for part in re.split(r"\s*[;|]\s*", piece):
+                part = part.strip().strip(".")
+                if len(part) < 4:
+                    continue
+                kind = None
+                for pat, k in _LABEL_KIND:
+                    if re.match(pat, part, re.I):
+                        kind = k
+                        break
+                if kind is None and "embalagem" in section:
+                    kind = "contents"
+                if kind is None and "medida" in section and _HAS_UNIT.search(part):
+                    kind = "dimension"
+                kind = kind or classify(part)
+                drop = None
+                if kind == "dimension" and re.search(r"\d", part) and not _HAS_UNIT.search(part):
+                    kind, drop = "characteristic", "medida sem unidade (ambígua)"
+                out.append({"text": part, "kind": kind, "approx": "aproximad" in section and kind == "dimension",
+                            "note": False, "drop": drop})
+    return out
+
 
 def build_facts(raw: dict, show_price: bool = False) -> tuple[list[dict], list[str]]:
     facts: list[dict] = []
     seen: set[str] = set()
 
-    def add(kind, text, source, risk=False, confirmed=False, display=None):
+    def add(kind, text, source, risk=False, confirmed=False, display=None, usable=True, approx=False, why=None):
         key = clean_display(text).lower()
         if not key or key in seen:
             return
         seen.add(key)
         disp = display if display is not None else clean_display(text)
-        facts.append({"id": f"f{len(facts) + 1}", "kind": kind, "text": clean_display(text),
-                      "display": disp if disp and len(disp) <= MAX_DISPLAY else None,
-                      "source": source, "risk": bool(risk and not confirmed),
-                      "usable": not (risk and not confirmed)})
+        if approx and disp:
+            disp = "Aprox. " + disp  # a fonte diz 'medidas aproximadas': não podemos mostrar como exatas
+        ok = usable and not (risk and not confirmed)
+        f = {"id": f"f{len(facts) + 1}", "kind": kind, "text": clean_display(text),
+             "display": disp if disp and len(disp) <= MAX_DISPLAY else None,
+             "source": source, "risk": bool(risk and not confirmed), "usable": ok}
+        if approx:
+            f["approx"] = True
+        if why:
+            f["reason"] = why
+        facts.append(f)
 
     # 1) fatos escritos pelo usuário no catálogo = confirmados por escrito
     for mf in raw.get("manual_facts", []):
@@ -428,20 +577,23 @@ def build_facts(raw: dict, show_price: bool = False) -> tuple[list[dict], list[s
     # 2) atributos estruturados da loja
     for k, v in raw.get("attributes", []):
         text = f"{k}: {v}"
-        kind = classify(text)
-        add(kind if kind != "characteristic" else "characteristic", text, "loja:atributo",
-            risk=bool(RISK_PATTERN.search(text)))
-    # 3) descrição publicada, trecho a trecho (literal)
-    for u in split_units(raw.get("description", "")):
-        add(classify(u), u, "loja:descricao", risk=bool(RISK_PATTERN.search(u)))
+        add(classify(text), text, "loja:atributo", risk=bool(RISK_PATTERN.search(text)))
+    # 3) descrição publicada: com estrutura (linhas) lemos linha a linha; achatada (HTML/meta) cai no divisor de frases
+    desc = raw.get("description", "")
+    if "\n" in desc.strip():
+        for u in parse_description(desc):
+            add(u["kind"], u["text"], "loja:descricao", risk=bool(RISK_PATTERN.search(u["text"])),
+                usable=not u["drop"], approx=u["approx"], why=u["drop"])
+    else:
+        for u in split_units(desc):
+            add(classify(u), u, "loja:descricao", risk=bool(RISK_PATTERN.search(u)))
     # 4) preço só como fato; só é usado quando brand.show_price = true
     pr = raw.get("price")
     if pr and pr.get("value"):
         try:
             val = float(str(pr["value"]).replace(",", "."))
             txt = ("R$ " + f"{val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")) if pr.get("currency", "BRL") == "BRL" else f"{val:.2f} {pr['currency']}"
-            add("price", txt, "loja:preco")
-            facts[-1]["usable"] = bool(show_price)
+            add("price", txt, "loja:preco", usable=bool(show_price))
         except ValueError:
             pass
     # nome do produto não é "fato": já fica em product.name
@@ -478,7 +630,7 @@ def _ext_for(content_type: str, url: str) -> str:
 
 
 def fetch_images(http: Http | None, sources: list[str], dest: Path, max_images: int, logger: Logger,
-                 base_dir: Path | None = None) -> list[dict]:
+                 base_dir: Path | None = None, meta: dict | None = None) -> list[dict]:
     from PIL import Image
     dest.mkdir(parents=True, exist_ok=True)
     out, hashes = [], set()
@@ -514,8 +666,9 @@ def fetch_images(http: Http | None, sources: list[str], dest: Path, max_images: 
                 path.unlink()
                 continue
             hashes.add(digest)
+            m = (meta or {}).get(src, {})
             out.append({"path": str(path), "url": src, "sha256": digest, "width": w, "height": h,
-                        "is_cover": len(out) == 0})
+                        "is_cover": len(out) == 0, "alt": m.get("alt", ""), "role": m.get("role", "product")})
         except Exception as e:  # imagem ruim não derruba o produto inteiro
             logger.warn("imagem ignorada", src=src, motivo=str(e)[:120])
     return out
@@ -524,7 +677,7 @@ def fetch_images(http: Http | None, sources: list[str], dest: Path, max_images: 
 def build_brief(raw: dict, cfg: dict, http: Http | None, logger: Logger, base_dir: Path | None = None) -> dict:
     pid = slugify(raw.get("id") or urlparse(raw.get("url", "")).path.rstrip("/").split("/")[-1] or raw["name"], 60)
     dest = cache_dir(cfg) / "products" / pid
-    images = fetch_images(http, raw.get("images", []), dest, cfg["store"]["max_images"], logger, base_dir)
+    images = fetch_images(http, raw.get("images", []), dest, cfg["store"]["max_images"], logger, base_dir, raw.get("image_meta"))
     if not images:
         raise PipelineError(f"Produto '{raw['name']}' sem imagem utilizável — vídeo não será gerado.")
     facts, missing = build_facts(raw, cfg["brand"].get("show_price", False))
@@ -537,7 +690,8 @@ def build_brief(raw: dict, cfg: dict, http: Http | None, logger: Logger, base_di
         "schema": 1,
         "fetched_at": iso(),
         "product": {"id": pid, "name": raw["name"], "category": raw.get("category", ""), "url": raw.get("url", ""),
-                    "images": images, "description": raw.get("description", "")},
+                    "images": images, "description": raw.get("description", ""), "stock": raw.get("stock"),
+                    "variants": raw.get("variants", []), "source": raw.get("source", "html")},
         "confirmed_facts": facts,
         "unavailable": missing,
         "selling_angles": selling_angles(facts),
@@ -561,10 +715,21 @@ def load_catalog(path: Path) -> list[dict]:
     return out
 
 
-def list_products(cfg: dict, logger: Logger, catalog: Path | None = None, offline: bool = False) -> list[dict]:
-    """Retorna produtos 'crus' (ainda sem baixar imagens). Para a loja, descobre URLs e lê cada página."""
+def list_products(cfg: dict, logger: Logger, catalog: Path | None = None, offline: bool = False,
+                  source: str = "auto") -> list[dict]:
+    """Retorna produtos 'crus' (ainda sem baixar imagens). Ordem: catálogo manual → API da loja → páginas HTML.
+    source='html' força a leitura das páginas. Se a API falhar, cai automaticamente para o HTML."""
     if catalog:
         return load_catalog(catalog)
+    if source in ("auto", "api"):
+        try:
+            prods = supabase_products(cfg, logger, offline)
+            if prods:
+                return prods
+        except Exception as e:  # qualquer falha da API => plano B (HTML), registrado no log
+            logger.warn("API da loja indisponível: usando as páginas HTML", erro=str(e)[:200])
+            if source == "api":
+                raise PipelineError(f"API da loja indisponível: {e}") from e
     http = Http(cfg, logger, offline=offline)
     ep = cfg["store"].get("json_endpoint")
     if ep:
@@ -595,6 +760,20 @@ def diagnose(cfg: dict, logger: Logger, out_dir: Path) -> Path:
     leitor ao site real. Não gera vídeo nem baixa mais que 1 imagem."""
     out_dir.mkdir(parents=True, exist_ok=True)
     rep: list[str] = [f"Diagnóstico da loja — {iso()}", f"URL: {cfg['store']['base_url']}{cfg['store']['list_path']}", ""]
+    try:  # 1) API da própria loja (fonte preferida)
+        api = supabase_products(dict(cfg, store=dict(cfg["store"], cache_ttl_hours=0)), logger)
+        if api is None:
+            rep.append("API da loja: não configurada (config.store.supabase)")
+        else:
+            rep.append(f"API da loja: OK — {len(api)} produtos publicados | sem estoque: {sum(1 for p in api if p['stock'] == 0)}")
+            for p in api[:3]:
+                roles = [m["role"] for m in p["image_meta"].values()]
+                facts, _ = build_facts(p)
+                rep.append(f"  • {p['name']} | estoque {p['stock']} | {len(p['images'])} fotos {roles} | "
+                           f"fatos usáveis {sum(1 for x in facts if x['usable'])}, retidos {sum(1 for x in facts if not x['usable'] and x['kind'] != 'price')}")
+    except Exception as e:
+        rep.append(f"API da loja: FALHOU ({str(e)[:160]}) — o pipeline usa as páginas HTML como plano B")
+    rep.append("")
     http = Http(cfg, logger)
     http.s = dict(http.s, cache_ttl_hours=0)  # sempre ao vivo
     base = cfg["store"]["base_url"].rstrip("/")
@@ -664,6 +843,7 @@ def main(argv=None) -> int:
     ap.add_argument("--catalog", type=Path)
     ap.add_argument("--limit", type=int, default=10)
     ap.add_argument("--offline", action="store_true")
+    ap.add_argument("--source", choices=["auto", "api", "html"], default="auto")
     a = ap.parse_args(argv)
     cfg, log = load_config(), Logger("fetcher")
     try:
@@ -673,7 +853,7 @@ def main(argv=None) -> int:
             print(p.read_text(encoding="utf-8"))
             print(f"\nRelatório salvo em: {p}\n(HTML bruto na mesma pasta: list.html, produto1.html...)")
             return 0
-        raws = list_products(cfg, log, a.catalog, a.offline)
+        raws = list_products(cfg, log, a.catalog, a.offline, a.source)
         if a.cmd == "discover":
             for r in raws[: a.limit]:
                 print(f"{r['name']}\t{r.get('url', '')}\t{len(r.get('images', []))} imagens")

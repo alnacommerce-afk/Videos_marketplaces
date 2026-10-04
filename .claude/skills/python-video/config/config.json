@@ -68,7 +68,15 @@
     "max_products": 60,
     "max_images": 8,
     "user_agent": "ALNA-VideoBot/1.0 (+uso interno; leitura da propria loja)",
-    "json_endpoint": null
+    "json_endpoint": null,
+    "supabase": {
+      "_doc": "API pública da própria loja (a mesma que o site usa no navegador). A chave 'publishable' é feita para ficar em código de navegador e só enxerga o que as regras RLS liberam (produtos publicados). NUNCA coloque aqui a chave service_role.",
+      "enabled": true,
+      "url": "https://ogxsdptftgxrujkfscvi.supabase.co",
+      "publishable_key": "sb_publishable_XRUo0X6uVAzap7e67838_g_0JRTlHut",
+      "key_env": "ALNA_SUPABASE_KEY",
+      "bucket": "product-media"
+    }
   },
   "daily": {
     "videos": 3,
@@ -78,7 +86,8 @@
     "cooldown_days": 10,
     "max_attempts_per_slot": 3,
     "min_facts": 1,
-    "catch_up_after_deadline": true
+    "catch_up_after_deadline": true,
+    "skip_out_of_stock": true
   },
   "brand": {
     "name": "ALNA",
