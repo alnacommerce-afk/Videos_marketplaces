@@ -783,7 +783,7 @@ def diagnose(cfg: dict, logger: Logger, out_dir: Path) -> Path:
     except PipelineError as e:
         rep.append(f"FALHA ao abrir a página de listagem: {e}")
         p = out_dir / "store-diagnostic.txt"
-        p.write_text("\n".join(rep), encoding="utf-8")
+        p.write_text("\n".join(rep), encoding="utf-8-sig")  # BOM: o PowerShell 5 mostra os acentos corretamente
         return p
     (out_dir / "list.html").write_text(html, encoding="utf-8")
     page = parse_html(html)
@@ -832,7 +832,7 @@ def diagnose(cfg: dict, logger: Logger, out_dir: Path) -> Path:
         except PipelineError as e:
             rep.append(f"FALHA: {str(e)[:200]}")
     p = out_dir / "store-diagnostic.txt"
-    p.write_text("\n".join(rep), encoding="utf-8")
+    p.write_text("\n".join(rep), encoding="utf-8-sig")  # BOM: o PowerShell 5 mostra os acentos corretamente
     return p
 
 
