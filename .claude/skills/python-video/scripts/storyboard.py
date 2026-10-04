@@ -51,6 +51,8 @@ def eligibility(brief: dict, name: str, spec: dict) -> tuple[bool, str]:
     kinds = req.get("fact_kinds_any")
     if kinds and not any(f["kind"] in kinds for f in facts):
         return False, f"precisa de fato do tipo {kinds}"
+    if len(brief.get("broll") or []) < req.get("min_broll", 0):
+        return False, f"precisa de {req['min_broll']} clipes de ambiente"
     return True, ""
 
 
@@ -265,6 +267,7 @@ def build_storyboard(brief: dict, cfg: dict, archetype: str, seed: int | None = 
     for it in broll_items[:n_amb]:
         pool.used.add(it["fact_id"])  # o fato de uso fica reservado para a cena do clipe (não repete em outra cena)
     clip_i = 0
+    claimed: set = set()  # fatos de uso já exibidos em texto (um fato aparece em no máximo uma cena)
     pace_cta = cfg["brand"].get("cta_by_pace", {}).get(spec["pace"])
     cta_idx = _cta_options(cfg).index(pace_cta) if pace_cta in _cta_options(cfg) else 0
 
@@ -285,10 +288,18 @@ def build_storyboard(brief: dict, cfg: dict, archetype: str, seed: int | None = 
             clip_i += 1
             fct = next(f for f in brief["confirmed_facts"] if f["id"] == it["fact_id"])
             tr, tw = beat.get("transition", "dissolve"), beat.get("tw", 0.4)
-            txt = {"source": f"fact:{fct['id']}", "role": "fact", "text": fct["display"], "anim": beat.get("anim", "words"),
-                   "t_in": 0.3, "position": "bottom"}
-            if expected_text(txt["source"], brief, cfg) != txt["text"]:
-                raise PipelineError(f"Texto da cena {i + 1} não bate com a fonte {txt['source']}")
+            txt = None
+            if beat.get("text", "fact:use") != "none" and fct["id"] not in claimed:
+                claimed.add(fct["id"])
+                txt = {"source": f"fact:{fct['id']}", "role": "fact", "text": fct["display"], "anim": beat.get("anim", "words"),
+                       "t_in": 0.3, "position": "bottom"}
+                if expected_text(txt["source"], brief, cfg) != txt["text"]:
+                    raise PipelineError(f"Texto da cena {i + 1} não bate com a fonte {txt['source']}")
+            csfx = []
+            if beat.get("sfx"):
+                csfx.append({"type": beat["sfx"], "at": 0.0})
+            if tr in SFX_FOR_TRANSITION and tw:
+                csfx.append({"type": SFX_FOR_TRANSITION[tr], "at": round(-tw * 0.8, 2)})
             keep = ("theme", "fact_id", "path", "provider", "id", "page_url", "user", "tags", "duration", "width", "height", "rendition", "sha256")
             scenes.append({
                 "index": i + 1, "role": beat["role"], "start": round(t, 3), "duration": round(dur, 3),
@@ -297,7 +308,7 @@ def build_storyboard(brief: dict, cfg: dict, archetype: str, seed: int | None = 
                            "c1": [0.5, 0.5], "ease": "in_out", "parallax": False},
                 "focus_pull": False, "clip": {k: it[k] for k in keep if k in it}, "illustrative": True,
                 "transition_in": {"type": tr, "duration": tw, "direction": mom[1] if (mom and mom[0] == "x") else 1},
-                "text": txt, "voice": txt["text"], "sfx": [],
+                "text": txt, "voice": txt["text"] if txt else None, "sfx": csfx,
                 "purpose": f"AMBIENTE · clipe ilustrativo do tema '{it['theme']}' (fato de uso {fct['id']})",
             })
             t += dur
@@ -391,7 +402,8 @@ def build_storyboard(brief: dict, cfg: dict, archetype: str, seed: int | None = 
         "format": fmt, "total_duration": round(t, 3),
         "strategy": {"archetype": archetype, "archetype_label": spec["label"], "pace": spec["pace"],
                      "hook_style": hook_style, "music_profile": profile, "style": spec["style"],
-                     "seed": seed, "voice_requirement": "optional", "broll_clips": n_amb},
+                     "seed": seed, "voice_requirement": "optional", "broll_clips": n_amb,
+                     "demo": bool(cfg.get("broll", {}).get("demo"))},
         "scenes": scenes, "voice_script": script, "notes": notes, "continuity": continuity_stats(scenes),
     }
     brief["video_strategy"] = sb["strategy"]

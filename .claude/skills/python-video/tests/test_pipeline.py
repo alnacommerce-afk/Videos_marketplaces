@@ -732,6 +732,71 @@ class TestBroll(unittest.TestCase):
             self.assertTrue(np.array_equal(np.asarray(last), np.asarray(src.read(100001))))
             src.close()
 
+    def test_demo_mode_relaxes_filters_but_normal_mode_does_not(self):
+        from store_samples import TOALHA
+        brief = fake_brief_with_use(TOALHA, "Toalha de Capivara 70x130cm")
+        normal = self.broll.prepare_broll(brief, self.cfg, LOG)
+        self.assertEqual([i["id"] for i in normal], [3], "rotina diária: 1 clipe, sem produto parecido (towel) e sem crianças")
+        shutil.rmtree(Path(os.environ["ALNA_CACHE_DIR"]) / "http", ignore_errors=True)
+        self.calls.clear()
+        demo = copy.deepcopy(self.cfg)
+        demo["broll"].update({"demo": True, "max_per_video": 3})
+        out = self.broll.prepare_broll(brief, demo, LOG)
+        self.assertEqual([i["id"] for i in out], [2, 3, 4], "demo: aceita 'towel', 3 clipes distintos, ainda sem crianças (id 1)")
+        self.assertEqual([i["theme"] for i in out], ["praia", "piscina", "academia"])
+        self.assertEqual(self.calls[0]["q"], "towel beach", "demo busca o produto + tema (pessoas usando)")
+        self.assertTrue(all(i["fact_id"] == out[0]["fact_id"] for i in out), "todo clipe aponta o fato de uso que o justifica")
+
+    def _brief_with_clips(self, n=3):
+        brief, use = self._brief_with_clip()
+        paths = [self.land4k, self.land, self.port]
+        brief["broll"] = [{**brief["broll"][0], "id": 10 + k, "path": str(paths[k]), "theme": ["praia", "piscina", "academia"][k],
+                           "user": f"Autor-{k}"} for k in range(n)]
+        return brief, use
+
+    def test_demo_mix_alternates_photos_and_clips(self):
+        brief, use = self._brief_with_clips(3)
+        demo = copy.deepcopy(self.cfg)
+        demo["broll"].update({"demo": True, "max_per_video": 3})
+        sb = SB.build_storyboard(brief, demo, "DEMO_MIX", seed=2)
+        roles = ["clip" if s.get("clip") else "foto" for s in sb["scenes"]]
+        self.assertEqual(roles, ["clip", "foto", "foto", "clip", "foto", "clip", "foto"])
+        texts = [s["text"] for s in sb["scenes"] if s.get("clip")]
+        self.assertEqual(sum(1 for x in texts if x), 1, "só um clipe leva o texto do fato de uso; os outros ficam sem texto")
+        self.assertTrue(all(s["illustrative"] for s in sb["scenes"] if s.get("clip")))
+        self.assertTrue(15 <= sb["total_duration"] <= 18)
+        self.assertTrue(sb["scenes"][0]["sfx"] and sb["scenes"][1]["sfx"], "efeitos sonoros nas trocas")
+        self.assertEqual(len([s for s in SB.build_storyboard(self._brief_with_clips(2)[0], demo, "DEMO_MIX", seed=2)["scenes"] if s.get("clip")]), 2)
+        one = self._brief_with_clips(1)[0]
+        self.assertNotEqual(SB.eligible_archetypes(one)["DEMO_MIX"], "", "com 1 clipe só (rotina diária) o DEMO_MIX não é elegível")
+        brief.pop("broll")
+        self.assertNotEqual(SB.eligible_archetypes(brief)["DEMO_MIX"], "")
+
+    def test_demo_video_end_to_end(self):
+        if FAST:
+            self.skipTest("renderiza vídeo")
+        brief, use = self._brief_with_clips(3)
+        cfg = copy.deepcopy(self.cfg)
+        cfg["broll"].update({"demo": True, "max_per_video": 3})
+        res = build_video(brief, cfg, "demo-e2e", day="2026-07-02", archetype="DEMO_MIX", seed=3, voice_mode="off",
+                          out_root=TMP / "out-demo")
+        self.assertEqual(res["status"], "READY", res)
+        job = TMP / "work" / "2026-07-02" / "demo-e2e"
+        val = load_json(job / "validation.json")
+        self.assertTrue(val["ok"], val["errors"])
+        self.assertIn("MODO DEMONSTRAÇÃO", (job / "creditos.txt").read_text(encoding="utf-8"))
+        sb = load_json(job / "storyboard.json")
+        self.assertTrue(sb["strategy"]["demo"])
+        rr = load_json(job / "render_report.json")
+        labels = [l for sc in rr["scenes"] for l in sc["layers"] if l["role"] == "badge"]
+        self.assertEqual(len(labels), 3, "rótulo 'Imagem ilustrativa' em cada cena de clipe")
+        # o gate continua barrando clipe sem fato de uso que o justifique
+        bf = load_json(job / "brief.json")
+        sb2 = copy.deepcopy(sb)
+        next(s for s in sb2["scenes"] if s.get("clip"))["clip"]["fact_id"] = "f999"
+        r = V.validate(job / "video.mp4", sb2, bf, cfg, rr, load_json(job / "audio_report.json"))
+        self.assertFalse(r["ok"])
+
     def test_validator_rules_for_clips(self):
         if FAST:
             self.skipTest("renderiza vídeo")

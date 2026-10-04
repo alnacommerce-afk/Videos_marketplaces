@@ -1184,6 +1184,111 @@
           "sfx": "pop"
         }
       ]
+    },
+    "DEMO_MIX": {
+      "label": "Demo mix (foto + clipes)",
+      "pace": "medium",
+      "music": [
+        "MODERN",
+        "ENERGETIC"
+      ],
+      "style": "bold",
+      "requires": {
+        "min_images": 2,
+        "min_broll": 2,
+        "min_facts": 2
+      },
+      "_doc": "Só entra no modo --demo (precisa de >= 2 clipes). Alterna clipe de ambiente e foto real do produto.",
+      "beats": [
+        {
+          "role": "HOOK",
+          "shot": "broll",
+          "move": [
+            "static"
+          ],
+          "w": 2.2,
+          "text": "none",
+          "optional": "broll",
+          "anim": "fade",
+          "sfx": "swipe"
+        },
+        {
+          "role": "PRODUCT_REVEAL",
+          "shot": "hero_wide",
+          "move": [
+            "pull_out"
+          ],
+          "w": 2.4,
+          "text": "name",
+          "anim": "mask",
+          "transition": "whip",
+          "tw": 0.3,
+          "sfx": "whoosh"
+        },
+        {
+          "role": "DETAIL",
+          "shot": "detail",
+          "move": [
+            "push_in",
+            "diagonal"
+          ],
+          "w": 2.6,
+          "text": "fact",
+          "anim": "slide",
+          "sfx": "click"
+        },
+        {
+          "role": "USE",
+          "shot": "broll",
+          "move": [
+            "static"
+          ],
+          "w": 2.6,
+          "text": "fact:use",
+          "optional": "broll",
+          "anim": "words",
+          "transition": "dissolve",
+          "tw": 0.4
+        },
+        {
+          "role": "DETAIL_2",
+          "shot": "detail2",
+          "move": [
+            "pan_h",
+            "pan_v"
+          ],
+          "w": 2.6,
+          "text": "fact_card",
+          "anim": "slide",
+          "transition": "directional_wipe",
+          "tw": 0.35,
+          "sfx": "swipe"
+        },
+        {
+          "role": "AMBIENT",
+          "shot": "broll",
+          "move": [
+            "static"
+          ],
+          "w": 2.2,
+          "text": "none",
+          "optional": "broll",
+          "transition": "whip",
+          "tw": 0.3,
+          "sfx": "whoosh"
+        },
+        {
+          "role": "CTA",
+          "shot": "hero",
+          "move": [
+            "push_in"
+          ],
+          "w": 2.6,
+          "text": "cta",
+          "anim": "scale",
+          "sfx": "pop"
+        }
+      ]
     }
   }
 }

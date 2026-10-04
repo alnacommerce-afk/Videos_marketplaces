@@ -174,10 +174,14 @@ def validate(mp4: Path, sb: dict, brief: dict, cfg: dict, render_report: dict | 
         avoid = [t.lower() for t in bcfg.get("avoid_tags", [])]
         for s in clips:
             tx, cl = s.get("text"), s["clip"]
-            fid = tx["source"].split(":", 1)[1] if tx and tx["source"].startswith("fact:") else None
-            f = facts.get(fid) if fid else None
-            if not f or f["kind"] != "use" or not f["usable"]:
-                problems.append(f"cena {s['index']}: texto não é um fato de USO confirmado")
+            fclip = facts.get(cl.get("fact_id"))
+            if not fclip or fclip["kind"] != "use" or not fclip["usable"]:
+                problems.append(f"cena {s['index']}: clipe sem fato de uso confirmado que o justifique")
+            if tx:
+                fid = tx["source"].split(":", 1)[1] if tx["source"].startswith("fact:") else None
+                f = facts.get(fid) if fid else None
+                if not f or f["kind"] != "use" or not f["usable"]:
+                    problems.append(f"cena {s['index']}: texto não é um fato de USO confirmado")
             if not all(cl.get(k) for k in ("provider", "id", "page_url", "user")):
                 problems.append(f"cena {s['index']}: origem do clipe não registrada")
             labels = [ly for sc in (render_report or {}).get("scenes", []) if sc["scene"] == s["index"] for ly in sc["layers"]

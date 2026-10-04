@@ -13,3 +13,4 @@ API*.txt
 *.key
 secrets/
 .env
+teste/

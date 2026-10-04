@@ -113,6 +113,16 @@ Cortes curtos (≈2–3 s) de vídeo livre que **ilustram um uso que a loja já 
 - **Formato:** vertical preenche o quadro; horizontal 4K recorta um vertical nítido; horizontal menor fica centralizado sobre uma cópia desfocada. O áudio do clipe é ignorado.
 - **Termos da API:** cache de 24 h e **sem download em massa** (busca só o que usa e guarda cada clipe em `cache/broll/`); a API pede mostrar a origem quando se exibem *resultados de busca* (não é o caso aqui), e `creditos.txt` (em `_auditoria`) traz o texto de crédito para quem quiser usar na legenda. Confirme a licença atual no site do Pixabay.
 
+### Vídeo de demonstração (`--demo`): para AVALIAR o visual com clipes
+
+```
+..\.venv\Scripts\python.exe build_video.py --slug toalha-de-capivara-70x130-200g --demo --voice off
+```
+Gera um vídeo que **alterna fotos reais do produto e até 3 clipes do Pixabay** (arquétipo `DEMO_MIX`: clipe → foto do produto → detalhe → clipe com o texto do uso → detalhe → clipe → CTA), com efeitos sonoros nas trocas e textos animados. A busca usa "produto + tema" (ex.: `towel beach`) para trazer **pessoas usando um produto parecido**. Sai em `teste\AAAA-MM-DD\` (dentro da pasta da skill), nunca no Drive.
+- **Só para avaliação.** O clipe mostra um produto *parecido*, não o da loja: toda cena de clipe leva "Imagem ilustrativa" e o `creditos.txt` registra "MODO DEMONSTRAÇÃO". Antes de publicar algo assim, decida com a política de cada marketplace e a regra de publicidade do consumidor.
+- **A rotina diária nunca usa o modo demo:** ela mantém 1 clipe, bloqueia produto parecido e crianças, e o `DEMO_MIX` só é elegível com ≥ 2 clipes.
+- Cena de clipe sem texto é permitida (o clipe aponta, em `clip.fact_id`, o fato de uso que o justifica; o gate confere). Só um clipe por vídeo leva o texto do fato de uso.
+
 ## Semana supervisionada (primeira semana de produção)
 
 Nos primeiros ~7 dias, assista aos vídeos e avalie cada um com `feedback.py` (nota 1–5 + comentário). O objetivo é descobrir o que o público-alvo aprova antes de automatizar mais (ex.: publicação). Perguntas guia: o gancho prendeu nos 2 primeiros segundos? O produto está claro e dominante? O texto está legível? A trilha combina? Você postaria? Depois da semana, `feedback.py summary` mostra quais arquétipos, músicas e ganchos funcionam, e ajustamos `archetypes.json`/`styles.json`.

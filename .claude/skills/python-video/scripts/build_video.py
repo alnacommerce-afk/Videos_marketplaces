@@ -18,7 +18,7 @@ from pathlib import Path
 
 import audio as A
 import product_fetcher as pf
-from common import (FAILED, PROCESSING, QUEUED, READY, RENDERING, VALIDATING, JobStatus, Logger, PipelineError, iso,
+from common import (SKILL_DIR, FAILED, PROCESSING, QUEUED, READY, RENDERING, VALIDATING, JobStatus, Logger, PipelineError, iso,
                     load_archetypes, load_config, output_dir, save_json, slugify, work_dir)
 from renderer import Renderer
 from storyboard import beat_lock, build_storyboard, choose_archetype, retime, storyboard_summary
@@ -189,10 +189,17 @@ def main(argv=None) -> int:
     ap.add_argument("--format", dest="fmt", choices=["9x16", "4x5", "1x1", "16x9"])
     ap.add_argument("--out", type=Path, help="pasta de saída (padrão: configurada / ALNA_OUTPUT_DIR)")
     ap.add_argument("--allow-voice-change", action="store_true")
+    ap.add_argument("--demo", action="store_true",
+                    help="vídeo de AVALIAÇÃO: alterna fotos e até 3 clipes do Pixabay (pessoas usando um produto parecido), com rótulo "
+                         "'Imagem ilustrativa'. Não é para publicar sem revisão e nunca é usado pela rotina diária")
     ap.add_argument("--no-deliver", action="store_true", help="não copia para a pasta final")
     ap.add_argument("--offline", action="store_true")
     a = ap.parse_args(argv)
     cfg, log = load_config(), Logger("cli")
+    if a.demo:
+        cfg["broll"].update({"demo": True, "enabled": True, "max_per_video": 3})
+        a.archetype = a.archetype or "DEMO_MIX"
+        a.out = a.out or (SKILL_DIR / "teste")
     try:
         if a.catalog:
             raws = pf.load_catalog(a.catalog)

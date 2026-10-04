@@ -74,11 +74,13 @@ def conflict_words(brief: dict) -> set[str]:
     return words
 
 
-def choose_hit(hits: list[dict], conflicts: set[str], cfg: dict) -> dict | None:
+def choose_hit(hits: list[dict], conflicts: set[str], cfg: dict, skip_ids: set | frozenset = frozenset()) -> dict | None:
     """Primeiro hit que passa nos filtros (a API já devolve por popularidade)."""
     b = cfg["broll"]
     avoid = {t.lower() for t in b["avoid_tags"]}
     for h in hits:
+        if h.get("id") in skip_ids:
+            continue
         tags = {t.strip().lower() for t in (h.get("tags") or "").split(",")}
         tag_text = " ".join(tags)
         dur = h.get("duration") or 0
@@ -86,7 +88,8 @@ def choose_hit(hits: list[dict], conflicts: set[str], cfg: dict) -> dict | None:
         big = vids.get("large") or {}
         med = vids.get("medium") or {}
         rend = big if big.get("url") else med
-        if not rend.get("url") or rend.get("width", 0) < b["min_width"]:
+        # "min_width" vale para o lado MAIOR: um clipe vertical 1080x1920 é ótimo para 9:16 e não pode ser descartado
+        if not rend.get("url") or max(rend.get("width", 0), rend.get("height", 0)) < b["min_width"]:
             continue
         if not (b["min_clip_s"] <= dur <= b["max_clip_s"]):
             continue
@@ -102,7 +105,7 @@ def choose_hit(hits: list[dict], conflicts: set[str], cfg: dict) -> dict | None:
 def search_pixabay(http, key: str, query: str, lang: str, cfg: dict) -> list[dict]:
     b = cfg["broll"]
     data = http.get_json(b["api_url"], {"key": key, "q": query, "lang": lang, "per_page": str(b["per_page"]),
-                                        "safesearch": "true", "order": "popular", "min_width": str(b["min_width"])},
+                                        "safesearch": "true", "order": "popular", "min_width": "1000"},  # a API filtra pela largura: 1000 inclui os verticais
                          ttl_hours=b["cache_ttl_hours"])  # a API exige cache de 24 h
     return data.get("hits", []) if isinstance(data, dict) else []
 
@@ -132,20 +135,25 @@ def prepare_broll(brief: dict, cfg: dict, logger: Logger, offline: bool = False)
     from product_fetcher import Http
     http = Http(cfg, logger, offline=offline)
     http.s = dict(http.s, min_delay_s=max(http.s["min_delay_s"], b.get("min_delay_s", 1.0)))
-    conflicts, out = conflict_words(brief), []
+    demo = bool(b.get("demo"))
+    # modo DEMONSTRAÇÃO (só --demo): aceita clipes que mostram um produto parecido e busca "pessoas usando"; nunca roda na rotina diária
+    conflicts, out, used_ids = (set() if demo else conflict_words(brief)), [], set()
+    prod_en = next((ens[0] for pt, ens in PRODUCT_WORDS_EN.items() if re.search(rf"\b{pt}", _norm(brief["product"]["name"]))), None)
     for t in themes:
         if len(out) >= b["max_per_video"]:
             break
         try:
             picked = None
-            for lang, q in t["queries"]:
-                picked = choose_hit(search_pixabay(http, key, q, lang, cfg), conflicts, cfg)
+            queries = ([("en", f"{prod_en} {t['queries'][1][1]}")] if (demo and prod_en) else []) + t["queries"]
+            for lang, q in queries:
+                picked = choose_hit(search_pixabay(http, key, q, lang, cfg), conflicts, cfg, used_ids)
                 if picked:
                     break
             if not picked:
                 logger.info("nenhum clipe adequado", tema=t["theme"])
                 continue
             h, rend = picked["hit"], picked["rendition"]
+            used_ids.add(h["id"])
             path = download_clip(http, rend, cache_dir(cfg) / "broll" / f"pixabay-{h['id']}-{rend['name']}.mp4", logger)
             out.append({"theme": t["theme"], "fact_id": t["fact_id"], "path": str(path), "provider": "pixabay",
                         "id": h["id"], "page_url": h.get("pageURL", ""), "user": h.get("user", ""), "tags": h.get("tags", ""),
@@ -159,6 +167,8 @@ def prepare_broll(brief: dict, cfg: dict, logger: Logger, offline: bool = False)
 
 def credits_text(sb: dict) -> str:
     lines = ["Créditos dos clipes de ambiente (Pixabay):"]
+    if sb["strategy"].get("demo"):
+        lines.insert(0, "MODO DEMONSTRAÇÃO: os clipes podem mostrar um produto parecido (não o seu). Use só para avaliar; não publique sem revisar.")
     for s in sb["scenes"]:
         c = s.get("clip")
         if c:
