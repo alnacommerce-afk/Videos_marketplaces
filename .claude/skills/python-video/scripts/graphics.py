@@ -370,22 +370,39 @@ def product_callout(text, ctx, anim="scale", t_in=0.25, role="fact", position="b
                  font_px=font.size)
 
 
-def cta_button(text, ctx, anim="scale", t_in=0.35, position="bottom", extra_up=120):
+def cta_button(text, ctx, anim="scale", t_in=0.35, position="bottom", extra_up=0, sub=None):
+    """Final de vídeo (DOOH): UMA ação, em UMA linha, botão grande de alto contraste; embaixo, em pílula escura,
+    o endereço da loja (`sub`, constante da marca) como prova de que é uma loja real."""
     W, H, safe, fp, st = ctx["W"], ctx["H"], ctx["safe"], ctx["font"], ctx["style"]
-    font, lines = fit_text(text, fp, _safe_w(W, safe, 190), 2, 70, 48)
+    font, lines = fit_text(text, fp, _safe_w(W, safe, 190), 1, 64, 44)
     ts = _text_surface(lines, font, (20, 20, 24, 255), shadow=False, align="center")
-    w, h = ts.width + 150, ts.height + 64
+    bw, bh = ts.width + 150, ts.height + 64
+    pill = None
+    if sub:
+        pf = get_font(fp, 46)
+        ps = _text_surface([sub], pf, (255, 255, 255, 255), shadow=False, align="center")
+        pw, ph = ps.width + 64, ps.height + 26
+        pill = Image.new("RGBA", (pw, ph), (0, 0, 0, 0))
+        ImageDraw.Draw(pill).rounded_rectangle((0, 0, pw - 1, ph - 1), radius=ph // 2, fill=(12, 12, 16, 235))
+        pill.alpha_composite(ps, (32, 13))
+    gap = 22
+    w = max(bw, pill.width if pill else 0)
+    h = bh + (gap + pill.height if pill else 0)
     surf = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    glow = Image.new("RGBA", (w + 60, h + 60), (0, 0, 0, 0))
-    ImageDraw.Draw(glow).rounded_rectangle((30, 40, w + 30, h + 40), radius=h // 2, fill=tuple(st["accent"]) + (110,))
-    d = ImageDraw.Draw(surf)
-    d.rounded_rectangle((0, 0, w - 1, h - 1), radius=h // 2, fill=tuple(st["accent"]) + (255,))
-    surf.alpha_composite(ts, (46, 32))
-    ax, ay = w - 74, h // 2  # seta desenhada (não depende de glifo da fonte)
+    bx = (w - bw) // 2
+    btn = Image.new("RGBA", (bw, bh), (0, 0, 0, 0))
+    d = ImageDraw.Draw(btn)
+    d.rounded_rectangle((0, 0, bw - 1, bh - 1), radius=bh // 2, fill=tuple(st["accent"]) + (255,))
+    btn.alpha_composite(ts, (46, 32))
+    ax, ay = bw - 74, bh // 2  # seta desenhada (não depende de glifo da fonte)
     d.polygon([(ax - 14, ay - 22), (ax + 16, ay), (ax - 14, ay + 22), (ax - 6, ay)], fill=(20, 20, 24, 255))
+    surf.alpha_composite(btn, (bx, 0))
+    if pill:
+        surf.alpha_composite(pill, ((w - pill.width) // 2, bh + gap))
     x, y = _place(position, w, h, W, H, safe, "center", extra_up)
-    return Layer(surf, x, y, anim, t_in, role="cta", text=text, text_rgb=(20, 20, 24), card_rgba=tuple(st["accent"]) + (255,),
-                 font_px=font.size)
+    lay = Layer(surf, x, y, anim, t_in, role="cta", text=text, text_rgb=(20, 20, 24), card_rgba=tuple(st["accent"]) + (255,),
+                font_px=font.size)
+    return lay
 
 
 def badge(text, ctx, position="top", anim="fade", t_in=0.2, size=46):

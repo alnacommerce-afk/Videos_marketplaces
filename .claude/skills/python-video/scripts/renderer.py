@@ -229,7 +229,7 @@ class Renderer:
         if role == "card":
             return (g.benefit_card if odd else g.feature_card)(text, label, ctx, anim=anim if anim in ("slide", "fade", "scale", "mask") else "slide", t_in=t_in)
         if role == "cta":
-            return g.cta_button(text, ctx, anim="scale" if anim not in ("fade",) else "fade", t_in=t_in)
+            return g.cta_button(text, ctx, anim="scale" if anim not in ("fade",) else "fade", t_in=t_in, sub=tx.get("sub"))
         return None
 
     def _ensure_contrast(self, j: int, layer: g.Layer) -> dict:

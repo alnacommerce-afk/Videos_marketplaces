@@ -600,7 +600,7 @@ def build_facts(raw: dict, show_price: bool = False) -> tuple[list[dict], list[s
 
     # 1) fatos escritos pelo usuário no catálogo = confirmados por escrito
     for mf in raw.get("manual_facts", []):
-        add(mf["kind"], mf["text"], "manual:catalogo", risk=False, confirmed=True)
+        add(mf["kind"], mf["text"], mf.get("source", "manual:catalogo"), risk=False, confirmed=True)
     # 2) atributos estruturados da loja
     for k, v in raw.get("attributes", []):
         text = f"{k}: {v}"
@@ -701,12 +701,26 @@ def fetch_images(http: Http | None, sources: list[str], dest: Path, max_images: 
     return out
 
 
+def user_confirmed_facts(name: str) -> list[dict]:
+    """Fatos que o dono da loja confirmou por escrito (config/user_confirmed.json), escolhidos pelo nome do produto."""
+    import unicodedata
+    from common import SKILL_DIR
+    data = load_json(SKILL_DIR / "config" / "user_confirmed.json", {}) or {}
+    norm = unicodedata.normalize("NFKD", name.lower()).encode("ascii", "ignore").decode()
+    out = []
+    for p in data.get("products", []):
+        if p.get("match") and p["match"].lower() in norm:
+            out += [{"kind": f["kind"], "text": f["text"], "source": "usuario:confirmado"} for f in p.get("facts", [])]
+    return out
+
+
 def build_brief(raw: dict, cfg: dict, http: Http | None, logger: Logger, base_dir: Path | None = None) -> dict:
     pid = slugify(raw.get("id") or urlparse(raw.get("url", "")).path.rstrip("/").split("/")[-1] or raw["name"], 60)
     dest = cache_dir(cfg) / "products" / pid
     images = fetch_images(http, raw.get("images", []), dest, cfg["store"]["max_images"], logger, base_dir, raw.get("image_meta"))
     if not images:
         raise PipelineError(f"Produto '{raw['name']}' sem imagem utilizável — vídeo não será gerado.")
+    raw = dict(raw, manual_facts=list(raw.get("manual_facts", [])) + user_confirmed_facts(raw["name"]))
     facts, missing = build_facts(raw, cfg["brand"].get("show_price", False))
     for kind in missing:
         logger.warn("informação não disponível na fonte", produto=raw["name"], informacao=kind)

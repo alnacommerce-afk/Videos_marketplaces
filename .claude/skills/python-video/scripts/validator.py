@@ -16,6 +16,7 @@ import numpy as np
 
 from audio import decode_audio, loudnorm_params
 from common import (Logger, PipelineError, ffprobe_json, load_config, load_json, run, save_json, which_tool)
+from broll import KIDS_PATTERN
 from storyboard import expected_text
 
 
@@ -139,6 +140,8 @@ def validate(mp4: Path, sb: dict, brief: dict, cfg: dict, render_report: dict | 
             f = facts.get(tx["source"].split(":", 1)[1])
             if not f or not f["usable"] or f["risk"]:
                 bad.append(f"cena {s['index']}: fato não utilizável")
+        if tx.get("sub") and tx["sub"] != cfg["brand"].get("store_url_label"):
+            bad.append(f"cena {s['index']}: endereço da loja diferente da marca")
         if tx.get("label") and expected_text(tx["label"], brief, cfg) is None:
             bad.append(f"cena {s['index']}: rótulo sem fonte")
         if s.get("voice") and s["voice"] != tx["text"]:
@@ -191,17 +194,26 @@ def validate(mp4: Path, sb: dict, brief: dict, cfg: dict, render_report: dict | 
             if (cl.get("duration") or 0) < s["duration"] + s["transition_in"]["duration"] + 0.3:
                 short.append(f"cena {s['index']}: clipe {cl.get('duration')}s")
             tags = (cl.get("tags") or "").lower()
-            if any(a in tags for a in avoid):
+            kid_hit = any(a in tags for a in avoid)
+            kids_ok = bool(bcfg.get("allow_children") and cl.get("kids_ok") and fclip and KIDS_PATTERN.search(fclip["text"]))
+            if kid_hit and not kids_ok:
                 bad_tags.append(f"cena {s['index']}: {tags}")
+            if kid_hit and kids_ok and any(a in tags for a in bcfg.get("kids_extra_avoid", [])):
+                bad_tags.append(f"cena {s['index']}: criança em primeiro plano ({tags})")
         c.add("b-roll: ilustra só um uso confirmado e tem origem registrada", not problems, "; ".join(problems)[:300])
         c.add('b-roll: rótulo "Imagem ilustrativa" visível', not label_missing, "; ".join(label_missing))
-        c.add("b-roll: sem crianças nas tags", not bad_tags, "; ".join(bad_tags)[:200])
+        c.add("b-roll: sem crianças nas tags (exceto uso infantil confirmado, nunca em close)", not bad_tags, "; ".join(bad_tags)[:200])
         c.add("b-roll: clipe longo o bastante para a cena (sem congelar)", not short, "; ".join(short)[:200], severity="warn")
 
     last = sb["scenes"][-1]
     cta_ok = bool(last.get("text")) and last["text"]["role"] == "cta" and (last["duration"] - last["text"]["t_in"]) >= 1.2
     c.add("CTA presente e visível ≥ 1,2 s no final", cta_ok)
     first = sb["scenes"][0]
+    # leitura "de relance" (DOOH/Reels): mensagem curta logo no começo e uma única ação curta no fim
+    ftx = first.get("text")
+    c.add("gancho: mensagem legível em ≤ 1,2 s e ≤ 7 palavras", bool(ftx) and ftx["t_in"] <= 1.2 and len(ftx["text"].split()) <= 7,
+          (f"{len(ftx['text'].split())} palavras, entra em {ftx['t_in']}s" if ftx else "cena 1 sem texto"), severity="warn")
+    c.add("CTA curta (≤ 5 palavras)", len((last.get("text") or {}).get("text", "").split()) <= 5, severity="warn")
     c.add("gancho nos primeiros 2,5 s (cena 1 curta)", first["duration"] <= 3.2, f"{first['duration']:.2f}s", severity="warn")
 
     if audio_report:

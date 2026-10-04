@@ -1,0 +1,14 @@
+{
+  "_doc": "Fatos de USO que o dono da loja confirmou POR ESCRITO (fora da descrição da loja). Entram no Product Brief como fatos confirmados (fonte 'usuario:confirmado'). 'match' = trecho do nome do produto (sem acento, minúsculo). Edite aqui para acrescentar/remover; nada além disto é inventado.",
+  "products": [
+    {
+      "match": "capivara",
+      "confirmed_by": "dono da loja, por escrito no chat de 2026-10-04: a toalha de capivara é usada por crianças (praia, decoração de uma peça da casa, escola)",
+      "facts": [
+        {"kind": "use", "text": "Para as crianças na praia"},
+        {"kind": "use", "text": "Para levar à escola"},
+        {"kind": "use", "text": "Para decorar a casa"}
+      ]
+    }
+  ]
+}

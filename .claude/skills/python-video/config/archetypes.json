@@ -1186,7 +1186,7 @@
       ]
     },
     "DEMO_MIX": {
-      "label": "Demo mix (foto + clipes)",
+      "label": "Demo conexão e confiança (foto + clipes)",
       "pace": "medium",
       "music": [
         "MODERN",
@@ -1207,9 +1207,9 @@
             "static"
           ],
           "w": 2.2,
-          "text": "none",
+          "text": "fact:use",
           "optional": "broll",
-          "anim": "fade",
+          "anim": "words",
           "sfx": "swipe"
         },
         {
@@ -1284,6 +1284,96 @@
             "push_in"
           ],
           "w": 2.6,
+          "text": "cta",
+          "anim": "scale",
+          "sfx": "pop"
+        }
+      ]
+    },
+    "CONNECT_TRUST": {
+      "label": "Conexão e confiança",
+      "pace": "medium",
+      "music": [
+        "MODERN",
+        "LIFESTYLE"
+      ],
+      "style": "bold",
+      "requires": {
+        "min_images": 2,
+        "min_facts": 2
+      },
+      "_doc": "Conexão (gancho com o uso real, texto nos primeiros 3 s) -> credibilidade (fatos confirmados) -> confiança (produto real, loja real) -> ação (uma chamada). Clipe de uso opcional.",
+      "beats": [
+        {
+          "role": "HOOK",
+          "shot": "hero_wide",
+          "move": [
+            "push_in"
+          ],
+          "w": 2.4,
+          "text": "hook",
+          "no_silent": true,
+          "anim": "words",
+          "sfx": "rise"
+        },
+        {
+          "role": "PROOF",
+          "shot": "detail",
+          "move": [
+            "pan_h",
+            "diagonal"
+          ],
+          "w": 3.0,
+          "text": "fact",
+          "anim": "slide",
+          "transition": "dissolve",
+          "tw": 0.35,
+          "sfx": "click"
+        },
+        {
+          "role": "USE",
+          "shot": "broll",
+          "move": [
+            "static"
+          ],
+          "w": 2.6,
+          "text": "fact:use",
+          "anim": "words",
+          "optional": "broll",
+          "transition": "dissolve",
+          "tw": 0.4
+        },
+        {
+          "role": "PRODUCT",
+          "shot": "hero",
+          "move": [
+            "pull_out"
+          ],
+          "w": 2.8,
+          "text": "name",
+          "anim": "mask",
+          "transition": "zoom",
+          "tw": 0.35,
+          "sfx": "whoosh"
+        },
+        {
+          "role": "PROOF_2",
+          "shot": "detail2",
+          "move": [
+            "push_in"
+          ],
+          "w": 3.0,
+          "text": "fact_card",
+          "anim": "slide",
+          "sfx": "soft_impact"
+        },
+        {
+          "role": "CTA",
+          "shot": "hero",
+          "move": [
+            "push_in"
+          ],
+          "w": 3.0,
           "text": "cta",
           "anim": "scale",
           "sfx": "pop"

@@ -37,7 +37,13 @@ THEMES = [
     ("yoga", r"\byoga\b|\bpilates\b", "yoga", "yoga"),
     ("camping", r"\bcamping\b|\bacampamento\b", "camping", "camping"),
     ("jardim", r"\bjardim\b", "jardim", "garden"),
+    ("escola", r"\bescola\b|\bescolar\b", "escola", "school"),
+    ("decoracao", r"\bdecor\w*", "decoração", "home decor"),
 ]
+
+# Fato de uso que fala de crianças: só ele autoriza (com broll.allow_children) um clipe com criança
+KIDS_PATTERN = re.compile(r"crian[cç]|infantil|pequen[oa]s?\b|filh[oa]s?\b|escola|escolar|\bkids?\b", re.I)
+KID_TAGS = {"child", "children", "kid", "kids", "baby", "boy", "girl", "toddler", "teen"}
 
 # palavras do produto -> equivalentes em inglês, para descartar clipes que mostrem OUTRO produto igual
 PRODUCT_WORDS_EN = {"toalha": ["towel"], "tabua": ["cutting board", "board"], "colher": ["spoon"], "rolo": ["rolling pin"],
@@ -89,6 +95,9 @@ def score_hit(h: dict, idx: int, n: int, rank: dict) -> tuple[float, list[str]]:
     if thm:
         score += 3
         matched += thm[:2]
+    if rank.get("kids") and tags & KID_TAGS:
+        score += 3
+        matched.append("criança (uso infantil confirmado)")
     if rank.get("people") and tags & PEOPLE_TAGS:
         score += 2
         matched.append("pessoa")
@@ -109,7 +118,8 @@ def themes_for(brief: dict) -> list[dict]:
         for theme, pat, q_pt, q_en in THEMES:
             if theme not in seen and re.search(pat, f["text"], re.I):
                 seen.add(theme)
-                out.append({"theme": theme, "fact_id": f["id"], "queries": [("pt", q_pt), ("en", q_en)]})
+                out.append({"theme": theme, "fact_id": f["id"], "queries": [("pt", q_pt), ("en", q_en)],
+                            "kids": bool(KIDS_PATTERN.search(f["text"]))})
     return out
 
 
@@ -125,12 +135,19 @@ def conflict_words(brief: dict) -> set[str]:
     return words
 
 
+def kids_allowed(cfg: dict, theme: dict) -> bool:
+    """Criança no clipe só com a trava ligada (--demo) E um fato de uso confirmado que fale de crianças."""
+    return bool(cfg.get("broll", {}).get("allow_children") and theme.get("kids"))
+
+
 def choose_hit(hits: list[dict], conflicts: set[str], cfg: dict, skip_ids: set | frozenset = frozenset(),
-               rank: dict | None = None) -> dict | None:
+               rank: dict | None = None, kids: bool = False) -> dict | None:
     """Sem `rank`: primeiro hit que passa nos filtros (rotina diária). Com `rank` ({sim, theme_words, people, min_score}):
     entre os que passam nos filtros, o de MAIOR proximidade com o produto/tema; abaixo de `min_score` nenhum serve."""
     b = cfg["broll"]
     avoid = {t.lower() for t in b["avoid_tags"]}
+    if kids:  # uso infantil confirmado: libera as tags de criança, mas nunca rosto em primeiro plano
+        avoid = (avoid - KID_TAGS) | {t.lower() for t in b.get("kids_extra_avoid", [])}
     ok = []
     for idx, h in enumerate(hits):
         if h.get("id") in skip_ids:
@@ -205,10 +222,13 @@ def prepare_broll(brief: dict, cfg: dict, logger: Logger, offline: bool = False)
             break
         try:
             picked = None
+            kids = kids_allowed(cfg, t)
             theme_en = t["queries"][1][1]
             if demo:
                 # DEMO: junta candidatos de várias buscas (produto+tema, pessoa+produto, pessoa+tema) e escolhe o MAIS PRÓXIMO do produto
                 queries = ([("en", f"{prod_en} {theme_en}"), ("en", f"person {prod_en}")] if prod_en else []) + [("en", f"{theme_en} person")] + t["queries"]
+                if kids:
+                    queries = [("en", f"children {theme_en}"), ("en", f"kids {prod_en or ''} {theme_en}".replace("  ", " "))] + queries
                 cands, seen = [], set()
                 for lang, q in queries:
                     for h in search_pixabay(http, key, q, lang, cfg):
@@ -216,11 +236,11 @@ def prepare_broll(brief: dict, cfg: dict, logger: Logger, offline: bool = False)
                             seen.add(h.get("id"))
                             cands.append(h)
                 rank = {"sim": similarity_terms(brief), "theme_words": [w for w in re.split(r"[ ,]+", theme_en) if w],
-                        "people": True, "min_score": 3}
-                picked = choose_hit(cands, conflicts, cfg, used_ids, rank)
+                        "people": True, "min_score": 3, "kids": kids}
+                picked = choose_hit(cands, conflicts, cfg, used_ids, rank, kids=kids)
             else:
                 for lang, q in t["queries"]:
-                    picked = choose_hit(search_pixabay(http, key, q, lang, cfg), conflicts, cfg, used_ids)
+                    picked = choose_hit(search_pixabay(http, key, q, lang, cfg), conflicts, cfg, used_ids, kids=kids)
                     if picked:
                         break
             if not picked:
@@ -232,7 +252,7 @@ def prepare_broll(brief: dict, cfg: dict, logger: Logger, offline: bool = False)
             out.append({"theme": t["theme"], "fact_id": t["fact_id"], "path": str(path), "provider": "pixabay",
                         "id": h["id"], "page_url": h.get("pageURL", ""), "user": h.get("user", ""), "tags": h.get("tags", ""),
                         "duration": h.get("duration"), "width": rend["width"], "height": rend["height"],
-                        "rendition": rend["name"], "sha256": sha256_file(path), "fetched_at": iso(),
+                        "rendition": rend["name"], "sha256": sha256_file(path), "fetched_at": iso(), "kids_ok": kids,
                         **({"similarity": {"score": picked["score"], "matched": picked["matched"]}} if "score" in picked else {})})
             logger.info("clipe de ambiente escolhido", tema=t["theme"], id=h["id"], autor=h.get("user"),
                         similaridade=picked.get("score"), tags=h.get("tags"))

@@ -762,6 +762,56 @@ class TestBroll(unittest.TestCase):
         self.assertEqual(self.broll.choose_hit([mk(4, "forest, tree")], set(), self.cfg, rank=rank), None, "sem relação com produto/tema: nenhum serve")
         self.assertEqual(self.broll.choose_hit(hits, set(), self.cfg)["hit"]["id"], 1, "rotina diária (sem ranking): primeiro que passa")
 
+    def test_children_only_with_confirmed_kids_use_and_demo_switch(self):
+        mk = lambda i, tags: {"id": i, "tags": tags, "duration": 8, "videos": {"large": {"url": "", "width": 0}, "medium": {"url": f"u{i}", "width": 1920, "height": 1080}}}
+        hits = [mk(1, "beach, children, sea"), mk(2, "beach, kids, towel, portrait")]
+        self.assertIsNone(self.broll.choose_hit(hits, set(), self.cfg), "padrão: criança nunca")
+        got = self.broll.choose_hit(hits, set(), self.cfg, kids=True)
+        self.assertEqual(got["hit"]["id"], 1, "criança liberada, mas nunca em retrato/close")
+        # a trava só vale com allow_children + fato de uso infantil confirmado
+        kid_theme = {"theme": "praia", "kids": True}
+        cfg = copy.deepcopy(self.cfg)
+        self.assertFalse(self.broll.kids_allowed(cfg, kid_theme))
+        cfg["broll"]["allow_children"] = True
+        self.assertTrue(self.broll.kids_allowed(cfg, kid_theme))
+        self.assertFalse(self.broll.kids_allowed(cfg, {"theme": "praia", "kids": False}), "uso não infantil: criança segue bloqueada")
+
+    def test_user_confirmed_facts_and_school_home_themes(self):
+        import product_fetcher as pf
+        facts = pf.user_confirmed_facts("Toalha de Capivara 70x130cm")
+        self.assertEqual({f["text"] for f in facts}, {"Para as crianças na praia", "Para levar à escola", "Para decorar a casa"})
+        self.assertEqual(pf.user_confirmed_facts("Tábua de cortar"), [], "só o produto citado recebe os fatos")
+        fcts, _ = pf.build_facts({"name": "Toalha de Capivara", "description": "", "manual_facts": facts})
+        brief = {"product": {"id": "x", "name": "Toalha de Capivara", "category": "", "images": []}, "confirmed_facts": fcts}
+        th = {t["theme"]: t for t in self.broll.themes_for(brief)}
+        self.assertEqual(set(th), {"praia", "escola", "decoracao"})
+        self.assertTrue(th["praia"]["kids"] and th["escola"]["kids"])
+        self.assertFalse(th["decoracao"]["kids"])
+
+    def test_cta_is_one_line_with_store_address(self):
+        import graphics as g
+        from common import fonts_dir, load_styles
+        cfg = self.cfg
+        fp, _ = g.find_font(cfg, fonts_dir(cfg), bold=True)
+        fmt = next(iter(cfg["formats"].values()))
+        ctx = {"W": 1080, "H": 1920, "safe": fmt["safe"], "font": fp, "style": load_styles()["bold"]}
+        lay = g.cta_button("Confira na loja ALNA", ctx, sub=cfg["brand"]["store_url_label"])
+        x, y, w, h = lay.bbox
+        sa = fmt["safe"]
+        self.assertTrue(x >= sa["left"] and x + w <= 1080 - sa["right"] and y >= sa["top"] and y + h <= 1920 - sa["bottom"], "dentro da safe area")
+        self.assertGreaterEqual(lay.font_px, 44)
+        single = g.cta_button("Confira na loja ALNA", ctx)
+        self.assertGreater(h, single.bbox[3], "endereço da loja entra sob o botão")
+        self.assertEqual(cfg["brand"]["store_url_label"], "store.alna.sale")
+
+    def test_connect_trust_archetype_hooks_with_a_message(self):
+        brief, use = self._brief_with_clip()
+        sb = SB.build_storyboard(brief, self.cfg, "CONNECT_TRUST", seed=3)
+        first = sb["scenes"][0]
+        self.assertTrue(first["text"] and first["text"]["t_in"] <= 1.2, "gancho com mensagem logo no começo")
+        self.assertEqual(sb["scenes"][-1]["text"]["role"], "cta")
+        self.assertEqual(sb["scenes"][-1]["text"]["sub"], "store.alna.sale")
+
     def _brief_with_clips(self, n=3):
         brief, use = self._brief_with_clip()
         paths = [self.land4k, self.land, self.port]

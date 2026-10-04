@@ -197,7 +197,7 @@ def main(argv=None) -> int:
     a = ap.parse_args(argv)
     cfg, log = load_config(), Logger("cli")
     if a.demo:
-        cfg["broll"].update({"demo": True, "enabled": True, "max_per_video": 3})
+        cfg["broll"].update({"demo": True, "enabled": True, "max_per_video": 3, "allow_children": True})
         a.archetype = a.archetype or "DEMO_MIX"
         a.out = a.out or (SKILL_DIR / "teste")
     try:

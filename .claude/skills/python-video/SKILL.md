@@ -104,6 +104,25 @@ Pensadas para fotos (sem filmagem) e para Reels / vídeo dos marketplaces. Todas
 
 Não implementado de propósito: relógios/time-remap com urgência (pode sugerir escassez que o produto não tem) e narrativa de identidade/"ritual" sem fatos de uso confirmados por escrito (item 7, aguardando decisão).
 
+## Persuasão e estrutura (conexão → credibilidade → confiança → ação)
+
+Objetivo de cada vídeo: **conexão, credibilidade e confiança**, terminando em **uma única ação**. Princípios (mídia digital exterior + Reels/TikTok):
+mensagem curta e de relance (≤ 7 palavras; CTA ≤ 5), texto legível já nos primeiros ~1 s (cobre o som desligado), alto contraste, uma ideia por cena e uma só chamada.
+
+| Etapa | Cena (arquétipo `CONNECT_TRUST` / `DEMO_MIX`) | Regra |
+|---|---|---|
+| Conexão | gancho com o **uso real** (fato de uso confirmado; clipe ilustrativo no demo) | texto em ≤ 1,2 s |
+| Credibilidade | fotos reais + fatos confirmados (medida, material, conteúdo) | nada inventado |
+| Confiança | produto real, nome, rótulo "Imagem ilustrativa", endereço `store.alna.sale` | origem dos clipes em `creditos.txt` |
+| Ação | final: botão em **uma linha** + endereço da loja numa pílula escura, sem cobrir o produto | CTA ≤ 5 palavras |
+
+Prova social, escassez e urgência só entram com **dado real** (ex.: estoque baixo vindo da loja). Nunca "mais vendido", "garantia" etc. sem confirmação.
+
+### Crianças nos clipes (travas)
+* Padrão (rotina diária): **nunca** clipe com criança.
+* Só no `--demo` (`broll.allow_children`) **e** só se um fato de USO confirmado falar de crianças (praia, escola...). Nunca retrato/close (`kids_extra_avoid`). Rótulo "Imagem ilustrativa" sempre; texto e chamada falam com o **adulto** (Conanda 163/2014, CONAR art. 37), sem apelo imperativo à criança. O Pixabay não verifica autorização de imagem das pessoas: **revise `creditos.txt` e os clipes antes de publicar**.
+* Fatos de uso que o dono confirmou por escrito, fora da descrição da loja, ficam em `config/user_confirmed.json` (fonte `usuario:confirmado`). Hoje: toalha de capivara (praia, escola, decoração).
+
 ## Clipes de ambiente (b-roll, Pixabay)
 
 Cortes curtos (≈2–3 s) de vídeo livre que **ilustram um uso que a loja já confirma**, para o vídeo não ser só foto. Opcional: sem chave, sem tema ou sem rede, o vídeo sai só com as fotos.

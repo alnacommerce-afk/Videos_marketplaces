@@ -14,3 +14,7 @@ API*.txt
 secrets/
 .env
 teste/
+
+# pasta local de chaves (nunca no repositório)
+API/
+API/*

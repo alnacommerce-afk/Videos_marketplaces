@@ -300,7 +300,7 @@ def build_storyboard(brief: dict, cfg: dict, archetype: str, seed: int | None = 
                 csfx.append({"type": beat["sfx"], "at": 0.0})
             if tr in SFX_FOR_TRANSITION and tw:
                 csfx.append({"type": SFX_FOR_TRANSITION[tr], "at": round(-tw * 0.8, 2)})
-            keep = ("theme", "fact_id", "path", "provider", "id", "page_url", "user", "tags", "duration", "width", "height", "rendition", "sha256", "similarity")
+            keep = ("theme", "fact_id", "path", "provider", "id", "page_url", "user", "tags", "duration", "width", "height", "rendition", "sha256", "similarity", "kids_ok")
             scenes.append({
                 "index": i + 1, "role": beat["role"], "start": round(t, 3), "duration": round(dur, 3),
                 "image_index": None, "image": None, "image_sha256": None,
@@ -336,6 +336,8 @@ def build_storyboard(brief: dict, cfg: dict, archetype: str, seed: int | None = 
                 style = hook_style
             else:
                 style = "name_reveal"
+            if style == "silent_macro" and beat.get("no_silent"):
+                style = "fact_hook" if pool.items else "name_reveal"  # gancho sempre com mensagem (conexão nos 3 primeiros segundos)
             if style == "silent_macro":
                 style = "name_reveal" if beat["role"] != "HOOK" else None
             if style == "fact_hook":
@@ -370,6 +372,8 @@ def build_storyboard(brief: dict, cfg: dict, archetype: str, seed: int | None = 
             text["position"] = {"headline": "top", "name": "bottom", "fact": "bottom", "card": "bottom", "cta": "bottom"}[text["role"]]
             if text["role"] == "cta":
                 text["t_in"] = 0.35
+                if cfg["brand"].get("store_url_label"):
+                    text["sub"] = cfg["brand"]["store_url_label"]  # endereço da loja: constante da marca (prova de loja real)
             voice = text["text"]
 
         sfx = []

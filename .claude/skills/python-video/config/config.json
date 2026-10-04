@@ -96,6 +96,7 @@
       "Compre na ALNA",
       "Conheça a coleção ALNA"
     ],
+    "store_url_label": "store.alna.sale",
     "question_template": "Já conhece {name}?",
     "show_price": false,
     "cta_by_pace": {
@@ -184,6 +185,8 @@
       "toddler",
       "teen"
     ],
+    "allow_children": false,
+    "kids_extra_avoid": ["portrait", "face", "closeup", "close-up", "selfie", "smile", "smiling"],
     "label": "Imagem ilustrativa",
     "key_file": "APIpixabay"
   }
