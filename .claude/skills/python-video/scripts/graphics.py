@@ -201,15 +201,18 @@ def wrap_lines(text: str, font: ImageFont.FreeTypeFont, max_w: int) -> list[str]
 
 
 def fit_text(text: str, font_path: str, max_w: int, max_lines: int, start: int, min_px: int) -> tuple[ImageFont.FreeTypeFont, list[str]]:
+    """Maior fonte (de `start` até `min_px`) em que o texto cabe em `max_lines` linhas dentro de `max_w`.
+    `_text_surface` soma ~12 px de folga (sombra), por isso o limite útil é max_w - 14."""
+    limit = max_w - 14
     size = start
     while size >= min_px:
         f = get_font(font_path, size)
-        lines = wrap_lines(text, f, max_w)
-        if len(lines) <= max_lines and all(f.getlength(l) <= max_w for l in lines):
+        lines = wrap_lines(text, f, limit)
+        if len(lines) <= max_lines and all(f.getlength(l) <= limit for l in lines):
             return f, lines
         size -= 4
     f = get_font(font_path, min_px)
-    return f, wrap_lines(text, f, max_w)
+    return f, wrap_lines(text, f, limit)
 
 
 def _text_surface(lines, font, fill, shadow=True, align="left", line_gap=1.18, pad=(0, 0)):
@@ -268,7 +271,7 @@ def gradient_overlay(W: int, H: int, bottom: float = 0.55, top: float = 0.30, di
 
 def text_card(text, ctx, position="top", size=104, max_lines=3, align="center", anim="scale", role="headline", t_in=0.15):
     W, H, safe, font_path, st = ctx["W"], ctx["H"], ctx["safe"], ctx["font"], ctx["style"]
-    max_w = _safe_w(W, safe)
+    max_w = _safe_w(W, safe, 64)  # sobra espaço para a placa de contraste (2 x 30 px)
     font, lines = fit_text(text.upper() if role == "headline" and len(text) <= 28 else text, font_path, max_w, max_lines, size, 56)
     surf = _text_surface(lines, font, tuple(st["text"]) + (255,), align=align)
     x, y = _place(position, surf.width, surf.height, W, H, safe, align)
