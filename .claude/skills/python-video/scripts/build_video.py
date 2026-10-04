@@ -83,7 +83,7 @@ def deliver(job_dir: Path, final_name: str, out_root: Path, day: str, log: Logge
     audit = dest_dir / "_auditoria" / final_name
     audit.mkdir(parents=True, exist_ok=True)
     for f in ("brief.json", "storyboard.json", "script.md", "validation.json", "render_report.json", "audio_report.json",
-              "job.json", "status.json", "video.contact.jpg"):
+              "job.json", "status.json", "video.contact.jpg", "creditos.txt"):
         if (job_dir / f).exists():
             shutil.copyfile(job_dir / f, audit / f)
     log.info("entregue", destino=str(dest))
@@ -130,6 +130,10 @@ def build_video(brief: dict, cfg: dict, job_id: str, day: str | None = None, arc
                      if mplan.get("source") == "arquivo" else "não foi possível travar os cortes na batida")
         save_json(job_dir / "storyboard.json", sb)
         (job_dir / "script.md").write_text(script_text(sb), encoding="utf-8")
+        from broll import credits_text
+        cred = credits_text(sb)
+        if cred:
+            (job_dir / "creditos.txt").write_text(cred, encoding="utf-8")
         summary["script"] = [{"cena": s["index"], "texto": s["text"]["text"] if s["text"] else None,
                               "fala": s["voice"] if s.get("voice_enabled") else None} for s in sb["scenes"]]
         print(storyboard_summary(sb), file=sys.stderr)

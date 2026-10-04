@@ -14,13 +14,79 @@ from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageOp
 
 import graphics as g
 from camera import ease_in_out, view_box
-from common import Logger, PipelineError, fonts_dir, load_styles, save_json, which_tool
+from common import Logger, PipelineError, ffprobe_json, fonts_dir, load_styles, run, save_json, which_tool
 
 BG_MARGIN = 60
 
 
 def _clamp01(x):
     return min(max(x, 0.0), 1.0)
+
+
+class ClipSource:
+    """Lê um clipe de vídeo quadro a quadro (FFmpeg → RGB), já em 9:16.
+    Vertical: preenche o quadro. Horizontal 4K: recorta um vertical nítido do centro. Horizontal menor: clipe centralizado
+    sobre uma cópia desfocada (evita ampliar demais e ficar mole). O áudio do clipe é ignorado."""
+
+    def __init__(self, path: str, W: int, H: int, fps: int, start: float = 0.4):
+        self.path, self.W, self.H, self.fps, self.start = path, W, H, fps, start
+        info = ffprobe_json(path)
+        v = next(s for s in info["streams"] if s["codec_type"] == "video")
+        self.w, self.h = int(v["width"]), int(v["height"])
+        self.dur = float(info["format"].get("duration", 0))
+        self.proc, self.next_idx, self.last, self.eof = None, 0, None, False
+
+    def vf(self) -> str:
+        W, H, fps = self.W, self.H, self.fps
+        if self.h >= self.w:
+            return f"fps={fps},scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H}"
+        if self.w >= 3000:
+            return f"fps={fps},crop=ih*{W}/{H}:ih,scale={W}:{H}"
+        return (f"fps={fps},split[a][b];[a]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
+                f"boxblur=30:3,eq=brightness=-0.08[bg];[b]scale={W}:-2[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2")
+
+    def _cmd(self, ss: float, frames: int | None = None) -> list[str]:
+        cmd = [which_tool("ffmpeg"), "-v", "error", "-ss", f"{ss:.3f}", "-i", self.path, "-an", "-vf", self.vf()]
+        if frames:
+            cmd += ["-frames:v", str(frames)]
+        return cmd + ["-f", "rawvideo", "-pix_fmt", "rgb24", "-"]
+
+    def _start(self):
+        self.close()
+        self.proc = subprocess.Popen(self._cmd(self.start), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        self.next_idx, self.eof = 0, False
+
+    def read(self, idx: int) -> Image.Image:
+        """Quadro `idx` (sequencial). Depois do fim do clipe, congela o último quadro."""
+        if self.proc is None or idx < self.next_idx - 1:
+            self._start()
+        n = self.W * self.H * 3
+        while self.next_idx <= idx and not self.eof:
+            buf = self.proc.stdout.read(n)
+            if len(buf) < n:
+                self.eof = True
+                break
+            self.last, self.next_idx = buf, self.next_idx + 1
+        if self.last is None:
+            raise PipelineError(f"Clipe sem quadros legíveis: {self.path}")
+        return Image.frombytes("RGB", (self.W, self.H), self.last)
+
+    def peek(self, t: float) -> Image.Image:
+        """Um quadro em t segundos, sem mexer na leitura sequencial (usado nas medições de contraste)."""
+        res = run(self._cmd(min(self.start + max(t, 0), max(self.dur - 0.2, 0)), frames=1), check=False)
+        n = self.W * self.H * 3
+        if len(res.stdout) < n:
+            raise PipelineError(f"Não consegui ler um quadro de {self.path}")
+        return Image.frombytes("RGB", (self.W, self.H), res.stdout[:n])
+
+    def close(self):
+        if self.proc is not None:
+            try:
+                self.proc.kill()
+                self.proc.stdout.close()
+            except Exception:
+                pass
+            self.proc = None
 
 
 class Renderer:
@@ -36,6 +102,7 @@ class Renderer:
         self.shade = g.gradient_overlay(self.W, self.H, bottom=self.style["grad_bottom"], top=0.16,
                                         dim=0.0, vignette=self.style["vignette"])
         self._photos: dict[str, Image.Image] = {}
+        self._clips: dict[int, ClipSource] = {}
         self._bgs: dict[int, Image.Image] = {}
         self.scenes = sb["scenes"]
         self.layers: dict[int, list[g.Layer]] = {}
@@ -102,8 +169,17 @@ class Renderer:
     def _tw(self, j: int) -> float:
         return self.scenes[j]["transition_in"]["duration"] or 0.0
 
-    def photo_frame(self, j: int, tau: float) -> Image.Image:
+    def _clip(self, j: int) -> ClipSource:
+        if j not in self._clips:
+            self._clips[j] = ClipSource(self.scenes[j]["clip"]["path"], self.W, self.H, self.fps)
+        return self._clips[j]
+
+    def photo_frame(self, j: int, tau: float, peek: bool = False) -> Image.Image:
         sc = self.scenes[j]
+        if sc.get("clip"):  # cena de b-roll: o quadro vem do vídeo
+            src = self._clip(j)
+            frame = src.peek(tau) if peek else src.read(max(0, int(tau * self.fps)))
+            return ImageChops.multiply(frame, self.shade)
         total = sc["duration"] + self._tw(j)
         p = _clamp01(tau / total)
         cam = sc["camera"]
@@ -162,7 +238,7 @@ class Renderer:
         info = {"scene": j + 1, "role": layer.role, "text": layer.text, "plate": False}
         tau = self._tw(j) + layer.t_in + layer.dur_in + 0.05
         tau = min(tau, self.scenes[j]["duration"] + self._tw(j) - 0.02)
-        base = self.photo_frame(j, tau)
+        base = self.photo_frame(j, tau, peek=True)
         x, y, w, h = layer.bbox
         region = base.crop((max(x, 0), max(y, 0), min(x + w, self.W), min(y + h, self.H)))
         mean = tuple(np.asarray(region, dtype=np.float32).reshape(-1, 3).mean(axis=0))
@@ -192,15 +268,21 @@ class Renderer:
 
     def _build_layers(self) -> None:
         for j, sc in enumerate(self.scenes):
-            layer = self._make_layer(j, sc)
+            layers = []
+            main = self._make_layer(j, sc)
+            if main:
+                layers.append(main)
+            if sc.get("illustrative"):  # cena de b-roll: rótulo obrigatório
+                layers.append(g.badge(self.cfg["broll"]["label"], self.ctx, "top", "fade", 0.1))
             entry = {"scene": sc["index"], "layers": []}
-            if layer:
+            for layer in layers:
                 info = self._ensure_contrast(j, layer)
-                self.layers[j] = [layer]
                 x, y, w, h = layer.bbox
                 info.update({"bbox": [x, y, w, h], "font_px": layer.font_px, "t_in": layer.t_in,
                              "visible_until_end": True, "anim": layer.anim})
                 entry["layers"].append(info)
+            if layers:
+                self.layers[j] = layers
             self.report["scenes"].append(entry)
 
     # -- transições ---------------------------------------------------------------
@@ -335,6 +417,9 @@ class Renderer:
             proc.kill()
             tmp.unlink(missing_ok=True)
             raise
+        finally:
+            for c in self._clips.values():
+                c.close()
         tmp.replace(out_mp4)
         sheet = None
         if thumbs:

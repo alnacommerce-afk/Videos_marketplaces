@@ -388,16 +388,16 @@ def cta_button(text, ctx, anim="scale", t_in=0.35, position="bottom", extra_up=1
                  font_px=font.size)
 
 
-def badge(text, ctx, position="top", anim="fade", t_in=0.2):
+def badge(text, ctx, position="top", anim="fade", t_in=0.2, size=46):
     W, H, safe, fp, st = ctx["W"], ctx["H"], ctx["safe"], ctx["font"], ctx["style"]
-    f = get_font(fp, 36)
-    w, h = int(f.getlength(text.upper())) + 56, 70
+    f = get_font(fp, size)
+    w, h = int(f.getlength(text.upper())) + 60, size + 38
     surf = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     d = ImageDraw.Draw(surf)
     d.rounded_rectangle((0, 0, w - 1, h - 1), radius=h // 2, fill=tuple(st["accent"]) + (255,))
-    d.text((28, 14), text.upper(), font=f, fill=(20, 20, 24, 255))
+    d.text((30, 16), text.upper(), font=f, fill=(20, 20, 24, 255))
     x, y = _place(position, w, h, W, H, safe, "left")
-    return Layer(surf, x, y, anim, t_in, role="badge", text=text, text_rgb=(20, 20, 24), card_rgba=tuple(st["accent"]) + (255,), font_px=36)
+    return Layer(surf, x, y, anim, t_in, role="badge", text=text, text_rgb=(20, 20, 24), card_rgba=tuple(st["accent"]) + (255,), font_px=size)
 
 
 def label(text, ctx, position="top", anim="fade", t_in=0.2):

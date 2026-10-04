@@ -240,7 +240,16 @@ def build_storyboard(brief: dict, cfg: dict, archetype: str, seed: int | None = 
     dcfg = cfg["duration"]
     pace_total = {"fast": dcfg["min"] + 0.5, "medium": dcfg["target"], "slow": dcfg["max"] - 0.5}[spec["pace"]]
     total = round(min(max(pace_total + rng.uniform(-0.3, 0.3), dcfg["min"] + 0.2), dcfg["max"] - 0.2), 2)
-    beats = spec["beats"]
+    # b-roll: só entra se há clipe baixado cujo tema é justificado por um fato de USO confirmado e exibível
+    use_ok = {f["id"] for f in brief["confirmed_facts"] if f["usable"] and f["kind"] == "use" and f["display"]}
+    broll_items = [b for b in (brief.get("broll") or []) if b["fact_id"] in use_ok][: cfg.get("broll", {}).get("max_per_video", 1)]
+    beats, n_amb = [], 0
+    for b in spec["beats"]:
+        if b.get("optional") == "broll":
+            if n_amb >= len(broll_items):
+                continue
+            n_amb += 1
+        beats.append(b)
     durs = _split_durations([b["w"] for b in beats], total, fps)
 
     # imagens + pontos de interesse
@@ -253,6 +262,9 @@ def build_storyboard(brief: dict, cfg: dict, archetype: str, seed: int | None = 
             sizes.append(pil.size)
             focals.append(focal_candidates(pil, 4))
     pool = FactPool(brief, rng)
+    for it in broll_items[:n_amb]:
+        pool.used.add(it["fact_id"])  # o fato de uso fica reservado para a cena do clipe (não repete em outra cena)
+    clip_i = 0
     pace_cta = cfg["brand"].get("cta_by_pace", {}).get(spec["pace"])
     cta_idx = _cta_options(cfg).index(pace_cta) if pace_cta in _cta_options(cfg) else 0
 
@@ -268,6 +280,28 @@ def build_storyboard(brief: dict, cfg: dict, archetype: str, seed: int | None = 
     notes: list[str] = []
     for i, (beat, dur) in enumerate(zip(beats, durs)):
         shot = beat["shot"]
+        if beat.get("optional") == "broll":
+            it = broll_items[clip_i]
+            clip_i += 1
+            fct = next(f for f in brief["confirmed_facts"] if f["id"] == it["fact_id"])
+            tr, tw = beat.get("transition", "dissolve"), beat.get("tw", 0.4)
+            txt = {"source": f"fact:{fct['id']}", "role": "fact", "text": fct["display"], "anim": beat.get("anim", "words"),
+                   "t_in": 0.3, "position": "bottom"}
+            if expected_text(txt["source"], brief, cfg) != txt["text"]:
+                raise PipelineError(f"Texto da cena {i + 1} não bate com a fonte {txt['source']}")
+            keep = ("theme", "fact_id", "path", "provider", "id", "page_url", "user", "tags", "duration", "width", "height", "rendition", "sha256")
+            scenes.append({
+                "index": i + 1, "role": beat["role"], "start": round(t, 3), "duration": round(dur, 3),
+                "image_index": None, "image": None, "image_sha256": None,
+                "camera": {"shot": "broll", "move": "static", "dir": 1, "fill": 1.0, "z0": 1.0, "z1": 1.0, "c0": [0.5, 0.5],
+                           "c1": [0.5, 0.5], "ease": "in_out", "parallax": False},
+                "focus_pull": False, "clip": {k: it[k] for k in keep if k in it}, "illustrative": True,
+                "transition_in": {"type": tr, "duration": tw, "direction": mom[1] if (mom and mom[0] == "x") else 1},
+                "text": txt, "voice": txt["text"], "sfx": [],
+                "purpose": f"AMBIENTE · clipe ilustrativo do tema '{it['theme']}' (fato de uso {fct['id']})",
+            })
+            t += dur
+            continue
         # imagem: planos "hero*" usam a capa; detalhes giram pelas demais (variedade de fotos)
         img_i = pick_image(shot, archetype, imgs, last_img, used_imgs, rng)
         used_imgs.add(img_i)
@@ -357,7 +391,7 @@ def build_storyboard(brief: dict, cfg: dict, archetype: str, seed: int | None = 
         "format": fmt, "total_duration": round(t, 3),
         "strategy": {"archetype": archetype, "archetype_label": spec["label"], "pace": spec["pace"],
                      "hook_style": hook_style, "music_profile": profile, "style": spec["style"],
-                     "seed": seed, "voice_requirement": "optional"},
+                     "seed": seed, "voice_requirement": "optional", "broll_clips": n_amb},
         "scenes": scenes, "voice_script": script, "notes": notes, "continuity": continuity_stats(scenes),
     }
     brief["video_strategy"] = sb["strategy"]

@@ -150,6 +150,15 @@ def check_notify():
             "Configure Telegram ou e-mail: veja o topo de scripts/notify.py")
 
 
+def check_broll(cfg):
+    b = cfg.get("broll", {})
+    if os.environ.get(b.get("key_env", "PIXABAY_API_KEY")):
+        add("OK", "Clipes de ambiente (Pixabay)", "chave configurada")
+    else:
+        add("AVISO", "Clipes de ambiente (Pixabay)", "sem chave: os vídeos usam só as fotos",
+            'setx PIXABAY_API_KEY "sua-chave" (chave gratuita em pixabay.com/api/docs) e reabra o terminal')
+
+
 def check_task():
     name = "ALNA-PythonVideo-Diario"
     if os.name != "nt":
@@ -204,7 +213,7 @@ def main(argv=None) -> int:
     a = ap.parse_args(argv)
     cfg = load_config()
     check_python(); check_packages(); check_ffmpeg(); check_fonts(cfg); check_dirs(cfg)
-    check_store(cfg, a.offline); check_voice(cfg); check_music(cfg); check_notify(); check_task(); check_last_runs()
+    check_store(cfg, a.offline); check_voice(cfg); check_music(cfg); check_notify(); check_broll(cfg); check_task(); check_last_runs()
     if a.smoke and not any(r[0] == "FALHA" and r[1] in ("FFmpeg", "ffmpeg", "ffprobe", "Fonte") for r in ROWS):
         smoke(cfg)
     icons = {"OK": "OK   ", "AVISO": "AVISO", "FALHA": "FALHA"}

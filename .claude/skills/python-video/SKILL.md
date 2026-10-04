@@ -100,6 +100,17 @@ Pensadas para fotos (sem filmagem) e para Reels / vídeo dos marketplaces. Todas
 
 Não implementado de propósito: relógios/time-remap com urgência (pode sugerir escassez que o produto não tem) e narrativa de identidade/"ritual" sem fatos de uso confirmados por escrito (item 7, aguardando decisão).
 
+## Clipes de ambiente (b-roll, Pixabay)
+
+Cortes curtos (≈2–3 s) de vídeo livre que **ilustram um uso que a loja já confirma**, para o vídeo não ser só foto. Opcional: sem chave, sem tema ou sem rede, o vídeo sai só com as fotos.
+
+- **Chave:** variável de ambiente `PIXABAY_API_KEY` (`setx PIXABAY_API_KEY "sua-chave"`, depois reabra o terminal). Chave gratuita em pixabay.com/api/docs. **Nunca grave a chave em arquivo do projeto.** Se ela foi colada em conversa ou arquivo, use o botão *Rotate* da página da API e atualize a variável.
+- **Tema:** sai só de palavras de fatos confirmados do tipo `use` ("Ideal para **praia, piscina, academia, viagens**") → temas `praia`, `piscina`, `academia`, `viagem`, `caminhada`, `danca`, `cozinha`, `banho`, `yoga`, `camping`, `jardim`. Frase de marketing que não é fato de uso não gera busca. A busca usa `lang=pt` e cai para inglês.
+- **Regras de segurança (reprovam o vídeo se violadas):** o texto da cena é o fato de USO literal (nunca material/medida/característica); rótulo **"Imagem ilustrativa"** visível; origem (id, autor, link) registrada; no máximo `broll.max_per_video` (1); tags com criança/bebê são descartadas; clipe cujas tags batem com o próprio produto (ex.: `towel` numa toalha) é descartado, porque mostraria **outro** produto.
+- **Onde aparece:** arquétipos PRODUCT_HERO, FEATURE_SHOWCASE, BENEFIT_SHOWCASE e PRODUCT_DISCOVERY têm uma cena opcional `AMBIENT` que some quando não há clipe; LIFESTYLE, DEMONSTRATION e HOW_TO_USE já têm cena de uso.
+- **Formato:** vertical preenche o quadro; horizontal 4K recorta um vertical nítido; horizontal menor fica centralizado sobre uma cópia desfocada. O áudio do clipe é ignorado.
+- **Termos da API:** cache de 24 h e **sem download em massa** (busca só o que usa e guarda cada clipe em `cache/broll/`); a API pede mostrar a origem quando se exibem *resultados de busca* (não é o caso aqui), e `creditos.txt` (em `_auditoria`) traz o texto de crédito para quem quiser usar na legenda. Confirme a licença atual no site do Pixabay.
+
 ## Semana supervisionada (primeira semana de produção)
 
 Nos primeiros ~7 dias, assista aos vídeos e avalie cada um com `feedback.py` (nota 1–5 + comentário). O objetivo é descobrir o que o público-alvo aprova antes de automatizar mais (ex.: publicação). Perguntas guia: o gancho prendeu nos 2 primeiros segundos? O produto está claro e dominante? O texto está legível? A trilha combina? Você postaria? Depois da semana, `feedback.py summary` mostra quais arquétipos, músicas e ganchos funcionam, e ajustamos `archetypes.json`/`styles.json`.
@@ -184,6 +195,7 @@ Movimentos: push-in, pull-out, pan H/V, diagonal, dolly (ease in-out), crop reve
 | Sintoma | Causa provável / solução |
 |---|---|
 | `API da loja indisponível` | O pipeline cai sozinho para o HTML (veja o aviso no log). Se for chave errada: confira `config.store.supabase.publishable_key` ou a variável `ALNA_SUPABASE_KEY`. |
+| Sem clipes de ambiente | `python doctor.py` mostra se `PIXABAY_API_KEY` está configurada; veja no log `b-roll indisponível` / `nenhum clipe adequado`. |
 | `Nenhum produto encontrado em .../loja` | A API falhou e o HTML não traz produtos. Use `python product_fetcher.py diagnose` ou `--catalog`. |
 | `robots.txt não permite` | Respeitamos o robots.txt. Use catálogo manual. |
 | `'ffmpeg' não encontrado` | `winget install Gyan.FFmpeg` e reabra o terminal. |

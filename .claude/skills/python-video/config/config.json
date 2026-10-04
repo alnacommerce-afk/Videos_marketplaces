@@ -159,5 +159,31 @@
     "crf": 18,
     "preset": "medium",
     "audio_bitrate": "192k"
+  },
+  "broll": {
+    "_doc": "Cortes curtos de AMBIENTE (Pixabay) que ilustram um uso confirmado pela loja. A chave vem da variável de ambiente PIXABAY_API_KEY (nunca neste arquivo).",
+    "enabled": true,
+    "provider": "pixabay",
+    "key_env": "PIXABAY_API_KEY",
+    "api_url": "https://pixabay.com/api/videos/",
+    "max_per_video": 1,
+    "min_clip_s": 4,
+    "max_clip_s": 40,
+    "min_width": 1920,
+    "per_page": 20,
+    "cache_ttl_hours": 24,
+    "min_delay_s": 1.0,
+    "avoid_tags": [
+      "child",
+      "children",
+      "kid",
+      "kids",
+      "baby",
+      "boy",
+      "girl",
+      "toddler",
+      "teen"
+    ],
+    "label": "Imagem ilustrativa"
   }
 }

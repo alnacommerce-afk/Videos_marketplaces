@@ -125,7 +125,7 @@ def validate(mp4: Path, sb: dict, brief: dict, cfg: dict, render_report: dict | 
     # ------------------------------ conteúdo ------------------------------------
     c.add("produto correto (id)", sb["product_id"] == brief["product"]["id"], sb["product_id"])
     shas = {i["sha256"] for i in brief["product"]["images"]}
-    c.add("imagens vêm do brief do produto", all(s["image_sha256"] in shas for s in sb["scenes"]))
+    c.add("imagens vêm do brief do produto", all(s["image_sha256"] in shas for s in sb["scenes"] if not s.get("clip")))
     bad = []
     facts = {f["id"]: f for f in brief["confirmed_facts"]}
     for s in sb["scenes"]:
@@ -164,6 +164,35 @@ def validate(mp4: Path, sb: dict, brief: dict, cfg: dict, render_report: dict | 
         c.add("texto legível (contraste ≥ 3:1)", not low, "; ".join(low)[:300])
     else:
         c.add("relatório de render disponível", False, "sem render_report", severity="warn")
+
+    # clipes de ambiente (b-roll): só ilustram USO confirmado, com rótulo, origem registrada e sem mostrar outro produto
+    clips = [s for s in sb["scenes"] if s.get("clip")]
+    if clips:
+        bcfg = cfg.get("broll", {})
+        c.add("b-roll: no máximo o permitido por vídeo", len(clips) <= bcfg.get("max_per_video", 1), f"{len(clips)} clipe(s)")
+        problems, label_missing, short, bad_tags = [], [], [], []
+        avoid = [t.lower() for t in bcfg.get("avoid_tags", [])]
+        for s in clips:
+            tx, cl = s.get("text"), s["clip"]
+            fid = tx["source"].split(":", 1)[1] if tx and tx["source"].startswith("fact:") else None
+            f = facts.get(fid) if fid else None
+            if not f or f["kind"] != "use" or not f["usable"]:
+                problems.append(f"cena {s['index']}: texto não é um fato de USO confirmado")
+            if not all(cl.get(k) for k in ("provider", "id", "page_url", "user")):
+                problems.append(f"cena {s['index']}: origem do clipe não registrada")
+            labels = [ly for sc in (render_report or {}).get("scenes", []) if sc["scene"] == s["index"] for ly in sc["layers"]
+                      if ly["role"] == "badge" and ly["text"] == bcfg.get("label", "Imagem ilustrativa")]
+            if render_report is not None and not labels:
+                label_missing.append(f"cena {s['index']}")
+            if (cl.get("duration") or 0) < s["duration"] + s["transition_in"]["duration"] + 0.3:
+                short.append(f"cena {s['index']}: clipe {cl.get('duration')}s")
+            tags = (cl.get("tags") or "").lower()
+            if any(a in tags for a in avoid):
+                bad_tags.append(f"cena {s['index']}: {tags}")
+        c.add("b-roll: ilustra só um uso confirmado e tem origem registrada", not problems, "; ".join(problems)[:300])
+        c.add('b-roll: rótulo "Imagem ilustrativa" visível', not label_missing, "; ".join(label_missing))
+        c.add("b-roll: sem crianças nas tags", not bad_tags, "; ".join(bad_tags)[:200])
+        c.add("b-roll: clipe longo o bastante para a cena (sem congelar)", not short, "; ".join(short)[:200], severity="warn")
 
     last = sb["scenes"][-1]
     cta_ok = bool(last.get("text")) and last["text"]["role"] == "cta" and (last["duration"] - last["text"]["t_in"]) >= 1.2

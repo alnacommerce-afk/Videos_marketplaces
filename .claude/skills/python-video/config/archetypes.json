@@ -39,6 +39,19 @@
           "tw": 0.4
         },
         {
+          "role": "AMBIENT",
+          "shot": "broll",
+          "move": [
+            "static"
+          ],
+          "w": 2.6,
+          "text": "fact:use",
+          "anim": "words",
+          "optional": "broll",
+          "transition": "dissolve",
+          "tw": 0.4
+        },
+        {
           "role": "DETAIL",
           "shot": "detail",
           "move": [
@@ -270,6 +283,19 @@
           "transition": "directional_wipe",
           "tw": 0.35,
           "sfx": "swipe"
+        },
+        {
+          "role": "AMBIENT",
+          "shot": "broll",
+          "move": [
+            "static"
+          ],
+          "w": 2.6,
+          "text": "fact:use",
+          "anim": "words",
+          "optional": "broll",
+          "transition": "dissolve",
+          "tw": 0.4
         },
         {
           "role": "FEATURE_2",
@@ -715,6 +741,19 @@
           "sfx": "whoosh"
         },
         {
+          "role": "AMBIENT",
+          "shot": "broll",
+          "move": [
+            "static"
+          ],
+          "w": 2.6,
+          "text": "fact:use",
+          "anim": "words",
+          "optional": "broll",
+          "transition": "dissolve",
+          "tw": 0.4
+        },
+        {
           "role": "DETAIL",
           "shot": "detail",
           "move": [
@@ -784,6 +823,19 @@
           "text": "fact_card",
           "anim": "slide",
           "sfx": "soft_impact"
+        },
+        {
+          "role": "AMBIENT",
+          "shot": "broll",
+          "move": [
+            "static"
+          ],
+          "w": 2.6,
+          "text": "fact:use",
+          "anim": "words",
+          "optional": "broll",
+          "transition": "dissolve",
+          "tw": 0.4
         },
         {
           "role": "BENEFIT_2",

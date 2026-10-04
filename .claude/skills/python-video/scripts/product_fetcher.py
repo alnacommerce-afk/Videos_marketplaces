@@ -84,6 +84,33 @@ class Http:
         rp = self._robots[host]
         return True if rp is None else rp.can_fetch(self.s["user_agent"], url)
 
+    def download(self, url: str, dest: Path, max_mb: int = 300) -> Path:
+        """Baixa um arquivo servido pela API (ex.: clipe) em streaming, com limite de tamanho. Escreve em .part e renomeia."""
+        wait = self.s["min_delay_s"] - (time.time() - self._last)
+        if wait > 0:
+            time.sleep(wait)
+        self._last = time.time()
+        part = Path(str(dest) + ".part")
+        try:
+            with self.session.get(url, stream=True, timeout=max(self.s["timeout_s"], 60)) as r:
+                if r.status_code != 200:
+                    raise PipelineError(f"HTTP {r.status_code} ao baixar o arquivo")
+                total = 0
+                with open(part, "wb") as f:
+                    for chunk in r.iter_content(1 << 20):
+                        total += len(chunk)
+                        if total > max_mb * 1024 * 1024:
+                            raise PipelineError(f"arquivo acima de {max_mb} MB")
+                        f.write(chunk)
+        except self.requests.RequestException as e:
+            part.unlink(missing_ok=True)
+            raise PipelineError(f"Falha de rede ao baixar: {e}") from e
+        except PipelineError:
+            part.unlink(missing_ok=True)
+            raise
+        os.replace(part, dest)
+        return dest
+
     def get_json(self, url: str, params: dict | None = None, headers: dict | None = None, ttl_hours: float = 1.0):
         """GET de uma API JSON (usa cache curto: o estoque muda). Respeita o intervalo mínimo entre requisições."""
         from urllib.parse import urlencode
@@ -697,6 +724,12 @@ def build_brief(raw: dict, cfg: dict, http: Http | None, logger: Logger, base_di
         "selling_angles": selling_angles(facts),
         "video_strategy": {},
     }
+    try:  # clipes de ambiente (opcional; nunca derruba o produto)
+        from broll import prepare_broll
+        brief["broll"] = prepare_broll(brief, cfg, logger, offline=getattr(http, "offline", False) if http else False)
+    except Exception as e:
+        brief["broll"] = []
+        logger.warn("b-roll ignorado", erro=str(e)[:160])
     save_json(dest / "brief.json", brief)
     return brief
 

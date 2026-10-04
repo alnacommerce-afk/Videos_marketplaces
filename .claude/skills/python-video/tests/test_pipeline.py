@@ -507,6 +507,235 @@ class TestStoreApi(unittest.TestCase):
         self.assertTrue(str(cm.exception))
 
 
+def make_clip(path: Path, size: str, dur: int = 8, rate: int = 30) -> Path:
+    """Clipe sintético (padrão de teste do FFmpeg) — só para exercitar a leitura/composição."""
+    from common import run, which_tool
+    path.parent.mkdir(parents=True, exist_ok=True)
+    run([which_tool("ffmpeg"), "-y", "-v", "error", "-f", "lavfi", "-i", f"testsrc2=size={size}:rate={rate}:duration={dur}",
+         "-pix_fmt", "yuv420p", "-c:v", "libx264", "-preset", "ultrafast", str(path)])
+    return path
+
+
+def fake_brief_with_use(desc: str, name: str = "Produto Teste"):
+    facts, _ = pf.build_facts({"name": name, "description": desc})
+    return {"product": {"id": "x", "name": name, "category": "", "images": []}, "confirmed_facts": facts}
+
+
+class TestBroll(unittest.TestCase):
+    """Clipes de ambiente (Pixabay simulado). O que importa aqui são as REGRAS de segurança."""
+
+    @classmethod
+    def setUpClass(cls):
+        import broll
+        cls.broll = broll
+        root = TMP / "px"
+        cls.land4k = make_clip(root / "land4k.mp4", "3840x2160", dur=6, rate=10)
+        cls.land = make_clip(root / "land.mp4", "1920x1080", dur=8)
+        cls.port = make_clip(root / "port.mp4", "1080x1920", dur=8)
+        cls.calls = []
+        calls = cls.calls
+        files = {"/files/land4k.mp4": cls.land4k, "/files/land.mp4": cls.land, "/files/port.mp4": cls.port}
+        cls.force_fail = False
+
+        def rend(name, w, h, big=True):
+            return {"url": f"{{BASE}}/files/{name}.mp4", "width": w, "height": h, "size": 1000} if big else {"url": "", "width": 0, "height": 0, "size": 0}
+        hits = [
+            {"id": 1, "pageURL": "https://pixabay.com/videos/id-1/", "tags": "beach, child, sea", "duration": 8, "user": "Autor-A",
+             "videos": {"large": rend("land4k", 3840, 2160), "medium": rend("land", 1920, 1080)}},
+            {"id": 2, "pageURL": "https://pixabay.com/videos/id-2/", "tags": "beach, towel, sand", "duration": 8, "user": "Autor-B",
+             "videos": {"large": rend("land4k", 3840, 2160, False), "medium": rend("land", 1920, 1080)}},
+            {"id": 3, "pageURL": "https://pixabay.com/videos/id-3/", "tags": "beach, sea, waves", "duration": 8, "user": "Autor-C",
+             "videos": {"large": rend("land4k", 3840, 2160), "medium": rend("land", 1920, 1080)}},
+            {"id": 4, "pageURL": "https://pixabay.com/videos/id-4/", "tags": "beach, sunset", "duration": 8, "user": "Autor-D",
+             "videos": {"large": rend("port", 1080, 1920), "medium": rend("port", 1080, 1920)}},
+        ]
+
+        class H(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                from urllib.parse import parse_qs, urlparse
+                u = urlparse(self.path)
+                if u.path == "/api/videos/":
+                    q = parse_qs(u.query)
+                    calls.append({"q": q.get("q", [""])[0], "lang": q.get("lang", [""])[0], "key": q.get("key", [""])[0]})
+                    if cls.force_fail:
+                        self.send_response(500); self.end_headers(); return
+                    if q.get("key", [""])[0] != "pixkey":
+                        self.send_response(400); self.end_headers(); self.wfile.write(b"[ERROR 400] Invalid API key"); return
+                    base = f"http://127.0.0.1:{cls.srv.server_port}"
+                    body = json.dumps({"total": 4, "totalHits": 4, "hits": json.loads(json.dumps(hits).replace("{BASE}", base))}).encode()
+                    ct = "application/json"
+                elif u.path in files:
+                    calls.append({"download": u.path})
+                    body, ct = files[u.path].read_bytes(), "video/mp4"
+                else:
+                    self.send_response(404); self.end_headers(); return
+                self.send_response(200); self.send_header("Content-Type", ct); self.send_header("Content-Length", str(len(body))); self.end_headers()
+                self.wfile.write(body)
+            def log_message(self, *a): pass
+        cls.srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), H)
+        threading.Thread(target=cls.srv.serve_forever, daemon=True).start()
+        cls.cfg = cfg_fast_fps()
+        cls.cfg["store"]["min_delay_s"] = 0.0
+        cls.cfg["broll"].update({"enabled": True, "api_url": f"http://127.0.0.1:{cls.srv.server_port}/api/videos/", "min_delay_s": 0.0})
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.srv.shutdown()
+
+    def setUp(self):
+        self.calls.clear()
+        type(self).force_fail = False
+        os.environ["PIXABAY_API_KEY"] = "pixkey"
+        from common import cache_dir
+        shutil.rmtree(cache_dir(self.cfg) / "broll", ignore_errors=True)
+        shutil.rmtree(cache_dir(self.cfg) / "http", ignore_errors=True)
+
+    def tearDown(self):
+        os.environ.pop("PIXABAY_API_KEY", None)
+
+    def test_themes_come_only_from_confirmed_use_facts(self):
+        from store_samples import TOALHA
+        b = fake_brief_with_use(TOALHA, "Toalha de Capivara")
+        themes = self.broll.themes_for(b)
+        self.assertEqual({t["theme"] for t in themes}, {"praia", "piscina", "academia", "viagem"})
+        use = next(f for f in b["confirmed_facts"] if f["kind"] == "use" and "praia" in f["text"])
+        self.assertTrue(all(t["fact_id"] == use["id"] for t in themes), "cada tema aponta o fato de uso que o justifica")
+        # "praia" numa frase de marketing que NÃO é fato de uso não gera busca
+        b2 = fake_brief_with_use("Deixe seus momentos de praia, piscina e lazer muito mais divertidos com a Toalha!")
+        self.assertEqual(self.broll.themes_for(b2), [])
+        # fato de uso marcado como risco/retido também não
+        b3 = fake_brief_with_use("Ideal para praia")
+        b3["confirmed_facts"][0]["usable"] = False
+        self.assertEqual(self.broll.themes_for(b3), [])
+
+    def test_choose_hit_filters(self):
+        cfg = self.cfg
+        mk = lambda i, tags, dur=8, w=1920, big=None: {"id": i, "tags": tags, "duration": dur,
+             "videos": {"large": big or {"url": "", "width": 0}, "medium": {"url": f"u{i}", "width": w, "height": 1080}}}
+        conflicts = self.broll.conflict_words({"product": {"name": "Toalha de Capivara 70x130cm", "category": ""}})
+        self.assertIn("towel", conflicts)
+        self.assertIn("toalha", conflicts)
+        hits = [mk(1, "beach, child"), mk(2, "beach, towel"), mk(3, "beach", dur=2), mk(4, "beach", w=1280), mk(5, "beach, sea")]
+        self.assertEqual(self.broll.choose_hit(hits, conflicts, cfg)["hit"]["id"], 5)
+        self.assertIsNone(self.broll.choose_hit(hits[:4], conflicts, cfg))
+        self.assertEqual(self.broll.choose_hit([mk(6, "beach", big={"url": "L", "width": 3840, "height": 2160})], set(), cfg)["rendition"]["name"], "large")
+
+    def test_prepare_downloads_records_origin_and_caches(self):
+        from store_samples import TOALHA
+        b = fake_brief_with_use(TOALHA, "Toalha de Capivara 70x130cm")
+        out = self.broll.prepare_broll(b, self.cfg, LOG)
+        self.assertEqual(len(out), 1, "no máximo max_per_video")
+        it = out[0]
+        self.assertEqual((it["provider"], it["theme"]), ("pixabay", "praia"))
+        self.assertEqual(it["id"], 3, "id 1 tem criança, id 2 tem 'towel'")
+        self.assertTrue(Path(it["path"]).exists() and it["sha256"] and it["user"] == "Autor-C" and it["page_url"].endswith("id-3/"))
+        self.assertEqual(it["rendition"], "large")
+        first = self.calls[0]
+        self.assertEqual((first["q"], first["lang"], first["key"]), ("praia", "pt", "pixkey"))
+        n = len(self.calls)
+        again = self.broll.prepare_broll(b, self.cfg, LOG)                     # 2ª vez: tudo do cache (API exige 24 h)
+        self.assertEqual(len(self.calls), n, "sem nova busca nem novo download")
+        self.assertEqual(again[0]["id"], 3)
+
+    def test_no_key_or_disabled_means_no_network(self):
+        from store_samples import TOALHA
+        b = fake_brief_with_use(TOALHA)
+        os.environ.pop("PIXABAY_API_KEY")
+        self.assertEqual(self.broll.prepare_broll(b, self.cfg, LOG), [])
+        os.environ["PIXABAY_API_KEY"] = "pixkey"
+        off = copy.deepcopy(self.cfg)
+        off["broll"]["enabled"] = False
+        self.assertEqual(self.broll.prepare_broll(b, off, LOG), [])
+        self.assertEqual(self.calls, [])
+
+    def test_api_failure_never_breaks_the_video(self):
+        from store_samples import TOALHA
+        type(self).force_fail = True
+        self.assertEqual(self.broll.prepare_broll(fake_brief_with_use(TOALHA), self.cfg, LOG), [])
+        os.environ["PIXABAY_API_KEY"] = "chave-errada"
+        type(self).force_fail = False
+        self.assertEqual(self.broll.prepare_broll(fake_brief_with_use(TOALHA), self.cfg, LOG), [])
+
+    def _brief_with_clip(self):
+        raws = pf.load_catalog(make_catalog(TMP / "fx"))
+        brief = pf.get_brief(raws[0], self.cfg, LOG)            # produto teste com fato de uso "Ideal para testes de vídeo"
+        use = next(f for f in brief["confirmed_facts"] if f["kind"] == "use")
+        brief["broll"] = [{"theme": "praia", "fact_id": use["id"], "path": str(self.land4k), "provider": "pixabay", "id": 3,
+                           "page_url": "https://pixabay.com/videos/id-3/", "user": "Autor-C", "tags": "beach, sea, waves",
+                           "duration": 8, "width": 3840, "height": 2160, "rendition": "large", "sha256": "x"}]
+        return brief, use
+
+    def test_storyboard_adds_labelled_clip_scene_only_with_a_clip(self):
+        brief, use = self._brief_with_clip()
+        sb = SB.build_storyboard(brief, self.cfg, "PRODUCT_HERO", seed=2)
+        clips = [s for s in sb["scenes"] if s.get("clip")]
+        self.assertEqual(len(clips), 1)
+        s = clips[0]
+        self.assertTrue(s["illustrative"] and s["text"]["source"] == f"fact:{use['id']}" and s["image"] is None)
+        self.assertEqual(SB.expected_text(s["text"]["source"], brief, self.cfg), s["text"]["text"])
+        self.assertEqual(sum(1 for x in sb["scenes"] if x["text"] and x["text"]["source"] == f"fact:{use['id']}"), 1, "o fato de uso não repete")
+        self.assertTrue(15 <= sb["total_duration"] <= 18)
+        brief2 = copy.deepcopy(brief)
+        brief2["broll"] = []
+        sb2 = SB.build_storyboard(brief2, self.cfg, "PRODUCT_HERO", seed=2)
+        self.assertFalse(any(x.get("clip") for x in sb2["scenes"]))
+        self.assertTrue(15 <= sb2["total_duration"] <= 18)
+        brief3 = copy.deepcopy(brief)
+        brief3["broll"][0]["fact_id"] = "f999"                  # tema sem fato de uso correspondente: não entra
+        self.assertFalse(any(x.get("clip") for x in SB.build_storyboard(brief3, self.cfg, "PRODUCT_HERO", seed=2)["scenes"]))
+
+    def test_clip_source_composes_vertical_frames(self):
+        import renderer as R
+        for path, name in ((self.land4k, "4K recortado"), (self.land, "1080p com fundo desfocado"), (self.port, "vertical")):
+            src = R.ClipSource(str(path), 1080, 1920, 30)
+            f0, f20 = src.read(0), src.read(20)
+            self.assertEqual(f0.size, (1080, 1920), name)
+            diff = np.abs(np.asarray(f0, np.int16) - np.asarray(f20, np.int16)).mean()
+            self.assertGreater(diff, 1.0, f"{name}: o vídeo se move")
+            self.assertEqual(src.peek(1.0).size, (1080, 1920))
+            last = src.read(100000)                              # além do fim: congela o último quadro
+            self.assertTrue(np.array_equal(np.asarray(last), np.asarray(src.read(100001))))
+            src.close()
+
+    def test_validator_rules_for_clips(self):
+        if FAST:
+            self.skipTest("renderiza vídeo")
+        brief, use = self._brief_with_clip()
+        res = build_video(brief, self.cfg, "broll-e2e", day="2026-07-01", archetype="PRODUCT_HERO", seed=2, voice_mode="off",
+                          out_root=TMP / "out-broll")
+        self.assertEqual(res["status"], "READY", res)
+        job = TMP / "work" / "2026-07-01" / "broll-e2e"
+        sb, bf = load_json(job / "storyboard.json"), load_json(job / "brief.json")
+        rr, ar = load_json(job / "render_report.json"), load_json(job / "audio_report.json")
+        val = load_json(job / "validation.json")
+        names = {c["name"]: c for c in val["checks"]}
+        for k in ("b-roll: ilustra só um uso confirmado e tem origem registrada", 'b-roll: rótulo "Imagem ilustrativa" visível',
+                  "b-roll: sem crianças nas tags"):
+            self.assertTrue(names[k]["ok"], names[k])
+        self.assertIn("Autor-C", (job / "creditos.txt").read_text(encoding="utf-8"))
+        self.assertTrue((TMP / "out-broll" / "2026-07-01" / "_auditoria" / res["final_name"] / "creditos.txt").exists())
+        # sem o rótulo => reprova
+        rr2 = copy.deepcopy(rr)
+        for sc in rr2["scenes"]:
+            sc["layers"] = [l for l in sc["layers"] if l["role"] != "badge"]
+        self.assertFalse(V.validate(job / "video.mp4", sb, bf, self.cfg, rr2, ar)["ok"])
+        # texto que não é fato de USO => reprova
+        sb2 = copy.deepcopy(sb)
+        other = next(f for f in bf["confirmed_facts"] if f["kind"] != "use" and f["usable"] and f["display"])
+        cs = next(s for s in sb2["scenes"] if s.get("clip"))
+        cs["text"].update({"source": f"fact:{other['id']}", "text": other["display"]})
+        r = V.validate(job / "video.mp4", sb2, bf, self.cfg, rr, ar)
+        self.assertFalse(r["ok"])
+        self.assertTrue(any("uso confirmado" in e for e in r["errors"]))
+        # clipe com tag de criança => reprova; origem apagada => reprova
+        sb3 = copy.deepcopy(sb)
+        next(s for s in sb3["scenes"] if s.get("clip"))["clip"]["tags"] = "beach, child"
+        self.assertFalse(V.validate(job / "video.mp4", sb3, bf, self.cfg, rr, ar)["ok"])
+        sb4 = copy.deepcopy(sb)
+        next(s for s in sb4["scenes"] if s.get("clip"))["clip"]["user"] = ""
+        self.assertFalse(V.validate(job / "video.mp4", sb4, bf, self.cfg, rr, ar)["ok"])
+
+
 class TestStoryboard(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

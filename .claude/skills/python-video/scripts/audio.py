@@ -359,7 +359,7 @@ def synth_texture(kind: str, dur: float, sr: int = SR_DEFAULT, seed: int = 5) ->
     return (x / (np.max(np.abs(x)) + 1e-9)).astype(np.float32)
 
 
-TEXTURE_FOR_SHOT = {"hero": "room", "hero_wide": "room", "detail": "air", "detail2": "air", "macro": "tick", "macro2": "tick"}
+TEXTURE_FOR_SHOT = {"hero": "room", "hero_wide": "room", "detail": "air", "detail2": "air", "macro": "tick", "macro2": "tick", "broll": "air"}
 
 
 def plan_music(sb: dict, cfg: dict, seed: int) -> dict:
