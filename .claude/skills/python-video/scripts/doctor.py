@@ -164,7 +164,7 @@ def check_broll(cfg):
             "(números-letras, ex.: 12345678-abcdef...)", "Abra o arquivo no Bloco de Notas e cole só a chave, sem aspas")
     else:
         add("AVISO", "Clipes de ambiente (Pixabay)", "sem chave: os vídeos usam só as fotos",
-            "Crie o arquivo APIpixabay (Bloco de Notas) na pasta da skill com a chave dentro, ou defina PIXABAY_API_KEY")
+            "Crie o arquivo APIpixabay (Bloco de Notas) na pasta da skill ou em API\\ com a chave dentro, ou defina PIXABAY_API_KEY")
 
 
 def check_task():

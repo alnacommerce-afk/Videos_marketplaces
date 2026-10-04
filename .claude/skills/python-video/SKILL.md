@@ -146,6 +146,12 @@ Gera um vídeo que **alterna fotos reais do produto e até 3 clipes do Pixabay**
 - **A rotina diária nunca usa o modo demo:** ela mantém 1 clipe, bloqueia produto parecido e crianças, e o `DEMO_MIX` só é elegível com ≥ 2 clipes.
 - Cena de clipe sem texto é permitida (o clipe aponta, em `clip.fact_id`, o fato de uso que o justifica; o gate confere). Só um clipe por vídeo leva o texto do fato de uso.
 
+## Atualizar pelo git e sessão local
+
+* `scripts\atualizar.ps1` clona/atualiza o repositório em `C:\ALNA\_repo` e copia só a pasta da skill para `C:\ALNA\python-video`, preservando `.venv`, `work`, `cache`, `output`, `teste`, `logs`, `API\`, `APIpixabay*` e `voice.lock.json`.
+* As chaves podem ficar em `API\` (ou na pasta da skill): `APIpixabay`, `API\APIpixabay.txt`...
+* `CLAUDE.md` (nesta pasta) leva o contexto e as regras para uma sessão local do Claude aberta em `C:\ALNA\python-video`.
+
 ## Semana supervisionada (primeira semana de produção)
 
 Nos primeiros ~7 dias, assista aos vídeos e avalie cada um com `feedback.py` (nota 1–5 + comentário). O objetivo é descobrir o que o público-alvo aprova antes de automatizar mais (ex.: publicação). Perguntas guia: o gancho prendeu nos 2 primeiros segundos? O produto está claro e dominante? O texto está legível? A trilha combina? Você postaria? Depois da semana, `feedback.py summary` mostra quais arquétipos, músicas e ganchos funcionam, e ajustamos `archetypes.json`/`styles.json`.

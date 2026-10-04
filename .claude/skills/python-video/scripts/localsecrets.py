@@ -1,6 +1,6 @@
 """Leitura de segredos (chaves de API) fora do repositório.
 
-Ordem: variável de ambiente → arquivo local na pasta da skill (ex.: `APIpixabay`, `APIpixabay.txt`).
+Ordem: variável de ambiente → arquivo local na pasta da skill ou na subpasta `API\\` (ex.: `APIpixabay`, `API\\APIpixabay.txt`).
 O arquivo é só do seu computador: está no .gitignore e nenhum teste/código o copia, loga ou empacota.
 (O nome não pode ser `secrets.py`: esse nome é um módulo da biblioteca padrão do Python.)
 """
@@ -43,11 +43,14 @@ def find_secret_file(file_names: list[str], base: Path | None = None) -> Path | 
     """Primeiro arquivo existente entre os nomes (com/sem a extensão .txt escondida pelo Windows)."""
     base = base or SKILL_DIR
     for name in file_names:
-        p = Path(name) if Path(name).is_absolute() else base / name
-        for suffix in ("", ".txt", ".txt.txt"):
-            cand = p.with_name(p.name + suffix)
-            if cand.is_file():
-                return cand
+        # na pasta da skill e na subpasta API\ (onde o dono guarda as chaves)
+        dirs = [None] if Path(name).is_absolute() else [base, base / "API"]
+        for d in dirs:
+            p = Path(name) if d is None else d / name
+            for suffix in ("", ".txt", ".txt.txt"):
+                cand = p.with_name(p.name + suffix)
+                if cand.is_file():
+                    return cand
     return None
 
 

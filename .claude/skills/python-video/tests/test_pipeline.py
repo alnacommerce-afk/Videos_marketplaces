@@ -960,6 +960,15 @@ class TestSecrets(unittest.TestCase):
             http_.get_json("http://127.0.0.1:9/api/videos/", {"key": secret, "q": "praia"}, ttl_hours=0)
         self.assertNotIn(secret, str(cm.exception))
 
+    def test_key_file_is_found_inside_the_API_folder(self):
+        import localsecrets as LS
+        base = TMP / "skillbase"
+        (base / "API").mkdir(parents=True, exist_ok=True)
+        (base / "API" / "APIpixabay.txt").write_text("12345678-" + "ab" * 12, encoding="utf-8")
+        val, origin = LS.read_secret("NAO_EXISTE_ENV", ["APIpixabay"], LS.PIXABAY_KEY, base=base)
+        self.assertEqual(val, "12345678-" + "ab" * 12)
+        self.assertNotIn(val, origin)
+
     def test_no_secret_in_project_files(self):
         """Falha se uma chave (Pixabay/ElevenLabs/service_role) aparecer em qualquer arquivo versionável da skill."""
         from common import SKILL_DIR
