@@ -56,6 +56,16 @@ python storyboard.py <brief.json> --archetype FEATURE_SHOWCASE
 # a rotina do dia (os 3 vídeos), na mão
 python scheduler.py run-daily
 ```
+
+Operação diária e primeira instalação:
+```bash
+python doctor.py --smoke            # confere o PC (Python, FFmpeg, Drive, loja, tarefa...) e gera 1 vídeo de teste
+python product_fetcher.py diagnose  # relatório da loja real + HTML bruto em logs/diagnostico-loja/ (me envie o .txt)
+python feedback.py review           # lista os vídeos de hoje (arquétipo, música, gancho, onde assistir)
+python feedback.py add video_01 4 "comentário"   # nota 1–5 por vídeo (semana supervisionada)
+python feedback.py summary          # médias por arquétipo / música / gancho
+python notify.py test               # testa o aviso (Telegram / e-mail)
+```
 Opções úteis: `--voice auto|off|required` · `--format 9x16|4x5|1x1|16x9` · `--out PASTA` · `--no-deliver` · `--seed N`.
 
 ## Rotina automática (3 vídeos por madrugada)
@@ -63,10 +73,14 @@ Opções úteis: `--voice auto|off|required` · `--format 9x16|4x5|1x1|16x9` · 
 `scheduler.py run-daily` é disparado pelo **Windows Task Scheduler** (não é loop infinito): **02:00** (principal) e **05:00** (recuperação). É idempotente: só produz o que falta no dia.
 - Escolhe 3 produtos (nunca/menos usados primeiro, cooldown de 10 dias), 3 arquétipos diferentes, ganchos e trilhas diferentes.
 - Falhou? Até 3 tentativas por vídeo, **cada uma com outro arquétipo**; depois troca de produto. Faltou produto? Registra e **não inventa conteúdo**.
-- Depois das 08:00 não inicia vídeo novo.
+- **Retomada após desligamento:** se o PC estava desligado às 02:00, a tarefa roda assim que ele ligar (`StartWhenAvailable`) e produz o que falta do dia, mesmo depois das 08:00 (marcado como `late` no resumo; `daily.catch_up_after_deadline=false` volta a bloquear depois das 08:00). Queda de energia no meio da produção: a trava é considerada abandonada (processo morto ou criada antes do último boot), cópias `.partial` são limpas e o vídeo interrompido recomeça do zero. Dias passados não são recuperados.
 - Entrega por cópia atômica (`.partial` → rename). Se o Drive estiver fora do ar, o vídeo fica READY em `work/` e a entrega é refeita na execução seguinte.
 - Instalar: `scripts\install_windows.ps1` (Python, FFmpeg, venv, dependências, teste e tarefa). Ou só a tarefa: `python scheduler.py install-task` (gera `config\ALNA-PythonVideo-Diario.xml`).
 - **Dependências físicas** (documentadas, não dá para garantir por software): o PC precisa estar **ligado ou em suspensão com "permitir temporizadores de ativação"**, com **o usuário logado** (bloqueio de tela é ok — a tarefa roda "somente quando o usuário está conectado" porque o `G:` do Google Drive é por usuário), com **Google Drive para computador aberto e sincronizando**, e com internet. PC desligado = sem vídeos.
+
+## Semana supervisionada (primeira semana de produção)
+
+Nos primeiros ~7 dias, assista aos vídeos e avalie cada um com `feedback.py` (nota 1–5 + comentário). O objetivo é descobrir o que o público-alvo aprova antes de automatizar mais (ex.: publicação). Perguntas guia: o gancho prendeu nos 2 primeiros segundos? O produto está claro e dominante? O texto está legível? A trilha combina? Você postaria? Depois da semana, `feedback.py summary` mostra quais arquétipos, músicas e ganchos funcionam, e ajustamos `archetypes.json`/`styles.json`.
 
 ## Onde ficam os arquivos
 
@@ -94,11 +108,17 @@ setx ELEVENLABS_VOICE_ID "id-da-voz-oficial"  # escolha UMA voz pt-BR e mantenha
 ```
 Reabra o terminal. Sem as duas variáveis o vídeo sai **sem narração** (texto + trilha) e o log avisa; use `--voice required` para falhar em vez disso. Atenção: contas ElevenLabs sem plano que libere vozes da biblioteca só podem usar as vozes liberadas para a conta (já ocorreu neste repo, ver `persona/persona.md`); escolha uma voz brasileira que a conta consiga usar de fato. Números/medidas são ajustados para a pronúncia (`80x150cm` → "80 por 150 centímetros").
 
+### Aviso ao terminar a rotina (opcional)
+`logs/ultimo-resumo.txt` é sempre gravado. Para receber no celular, configure **um** canal (detalhes no topo de `scripts/notify.py`):
+- Telegram: `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID`.
+- E-mail: `ALNA_SMTP_HOST`, `ALNA_SMTP_USER`, `ALNA_SMTP_PASSWORD` (Gmail: senha de app) e `ALNA_NOTIFY_TO`.
+O aviso diz quantos vídeos ficaram prontos, quais, se rodou atrasado e o que falhou. Falha no aviso nunca derruba a rotina.
+
 ### Fontes
-Prioridade: Inter, Montserrat, Poppins, Manrope, DM Sans, Archivo, Roboto, Segoe UI, Arial, Liberation Sans, DejaVu Sans — usa a primeira instalada. Para o visual ideal, copie `Inter-Bold.ttf` (ou Montserrat) para `fonts/`.
+Prioridade: Inter, Montserrat, Poppins, Manrope, DM Sans, Archivo, Roboto, Segoe UI, Arial, Liberation Sans, DejaVu Sans — usa a primeira instalada. A **Inter Bold** (licença OFL) já vem em `fonts/`. Para outra identidade, coloque outro `.ttf` ali e ajuste a ordem em `config.json`.
 
 ### Música
-Coloque faixas **licenciadas por você** em `music/`; o perfil é reconhecido pelo nome do arquivo ou da subpasta: `premium`, `lifestyle`, `energetic`, `modern`, `artisanal`, `minimal` (ex.: `music/premium/suave.mp3`). Sem arquivo para o perfil, usa a trilha sintetizada.
+Coloque faixas **licenciadas por você** em `music/` (guia em `music/README.md`); o perfil é reconhecido pelo nome do arquivo ou da subpasta: `premium`, `lifestyle`, `energetic`, `modern`, `artisanal`, `minimal` (ex.: `music/premium/suave.mp3`). Sem arquivo para o perfil, usa a trilha sintetizada.
 
 ## O que o diretor (você, Claude) deve fazer ao usar esta skill
 
@@ -127,6 +147,9 @@ scripts/renderer.py        composição por quadro, transições, FFmpeg (H.264/
 scripts/validator.py       quality gate
 scripts/build_video.py     orquestra 1 vídeo (CLI)
 scripts/scheduler.py       rotina diária + Task Scheduler
+scripts/doctor.py          checagem do PC + vídeo de teste (--smoke)
+scripts/feedback.py        notas por vídeo na semana supervisionada
+scripts/notify.py          aviso ao terminar (Telegram / e-mail)
 scripts/install_windows.ps1 instalação no Windows
 tests/                     testes (python tests/test_pipeline.py [--fast])
 ```
@@ -144,6 +167,8 @@ Movimentos: push-in, pull-out, pan H/V, diagonal, dolly (ease in-out), crop reve
 | Vídeo sem narração | `ELEVENLABS_API_KEY`/`ELEVENLABS_VOICE_ID` ausentes (veja o log) ou `--voice off`. |
 | `difere da voz oficial travada` | Mantenha a voz da marca; para trocar de propósito apague `config/voice.lock.json`. |
 | `Reprovado no quality gate: ...` | Leia `work/<dia>/<job>/validation.json`; o job fica FAILED e nada é entregue. |
+| Não sei se o PC está pronto | `python doctor.py --smoke` |
+| Loja não lida / produtos errados | `python product_fetcher.py diagnose` e envie `logs/diagnostico-loja/store-diagnostic.txt` |
 | Vídeos não aparecem às 08:00 | PC desligado/sem login/Drive fechado. Veja `logs/daily-AAAA-MM-DD.json` e `Get-ScheduledTaskInfo -TaskName ALNA-PythonVideo-Diario`. |
 | Texto "estranho" na pronúncia | Ajuste `speakable()` em `audio.py`. |
 | Visual com fonte genérica | Instale Inter/Montserrat em `fonts/`. |

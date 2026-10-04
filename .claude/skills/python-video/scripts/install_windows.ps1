@@ -5,7 +5,7 @@
    powershell -ExecutionPolicy Bypass -File .claude\skills\python-video\scripts\install_windows.ps1
 
  Faz: confere/instala Python 3.12 e FFmpeg (winget) -> cria .venv -> instala requirements -> roda os testes rápidos
- -> confere a pasta do Google Drive -> registra a tarefa diária (02:00 + recuperação 05:00).
+ -> doctor (--smoke) -> confere a pasta do Google Drive -> registra a tarefa diária (02:00 + recuperação 05:00).
 #>
 param([switch]$SkipTask, [switch]$SkipTests)
 $ErrorActionPreference = "Stop"
@@ -63,7 +63,10 @@ if (-not $env:ELEVENLABS_API_KEY -or -not $env:ELEVENLABS_VOICE_ID) {
   Write-Host '  setx ELEVENLABS_VOICE_ID "id-da-voz-oficial-pt-BR"'
 }
 
-# 7) tarefa agendada
+# 7) checagem geral + vídeo de teste (não usa a loja nem gasta nada)
+if (-not $SkipTests) { & $vpy (Join-Path $skill "scripts\doctor.py") --smoke }
+
+# 8) tarefa agendada
 if (-not $SkipTask) {
   & $vpy (Join-Path $skill "scripts\scheduler.py") install-task
   Write-Host "`nConfira em: Get-ScheduledTaskInfo -TaskName ALNA-PythonVideo-Diario"

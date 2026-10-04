@@ -587,9 +587,79 @@ def get_brief(raw: dict, cfg: dict, logger: Logger, http: Http | None = None, of
     return build_brief(raw, cfg, http, logger, base_dir=Path(raw["_base"]) if raw.get("_base") else None)
 
 
+# ----------------------------------------------------------------------------
+# Diagnóstico da loja (rodar no PC que tem acesso ao site)
+# ----------------------------------------------------------------------------
+def diagnose(cfg: dict, logger: Logger, out_dir: Path) -> Path:
+    """Consulta a loja AO VIVO (sem cache) e grava um relatório curto + o HTML bruto, para adaptar o
+    leitor ao site real. Não gera vídeo nem baixa mais que 1 imagem."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    rep: list[str] = [f"Diagnóstico da loja — {iso()}", f"URL: {cfg['store']['base_url']}{cfg['store']['list_path']}", ""]
+    http = Http(cfg, logger)
+    http.s = dict(http.s, cache_ttl_hours=0)  # sempre ao vivo
+    base = cfg["store"]["base_url"].rstrip("/")
+    list_url = base + cfg["store"]["list_path"]
+    try:
+        html = http.get(list_url, ttl_hours=0)
+    except PipelineError as e:
+        rep.append(f"FALHA ao abrir a página de listagem: {e}")
+        p = out_dir / "store-diagnostic.txt"
+        p.write_text("\n".join(rep), encoding="utf-8")
+        return p
+    (out_dir / "list.html").write_text(html, encoding="utf-8")
+    page = parse_html(html)
+    prod_links = sorted({urljoin(list_url, l["href"]).split("#")[0] for l in page.links
+                         if PRODUCT_LINK.search(urlparse(urljoin(list_url, l["href"])).path)})
+    json_prods = []
+    for raw in page.jsonld + page.json_scripts:
+        d = _loads(raw)
+        if d is not None:
+            json_prods += products_from_json(d, list_url)
+    rep += [f"Listagem: {len(html):,} caracteres | título: {page.title.strip()[:80]!r}",
+            f"  JSON-LD: {len(page.jsonld)} | JSON embutido: {len(page.json_scripts)} | links: {len(page.links)}",
+            f"  links que parecem produto: {len(prod_links)} | produtos em JSON da própria listagem: {len(json_prods)}",
+            f"  blocos de texto visíveis: {len(page.blocks)}"]
+    if not prod_links and not json_prods:
+        rep.append("  >> NENHUM produto no HTML: a loja provavelmente é montada pelo navegador (SPA). Envie list.html "
+                   "e, se possível, o endereço (Network/Rede do navegador) que devolve os produtos em JSON.")
+    try:
+        urls = discover_product_urls(http, cfg, logger)
+        rep.append(f"Descoberta: {len(urls)} produtos (limite {cfg['store']['max_products']})")
+    except PipelineError as e:
+        urls = prod_links[:3]
+        rep.append(f"Descoberta falhou: {str(e)[:200]}")
+    for n, u in enumerate(urls[:3], 1):
+        rep += ["", f"--- Produto {n}: {u}"]
+        try:
+            h = http.get(u, ttl_hours=0)
+            (out_dir / f"produto{n}.html").write_text(h, encoding="utf-8")
+            raw = extract_product_from_html(h, u)
+            facts, missing = build_facts(raw, cfg["brand"].get("show_price", False))
+            kinds: dict[str, int] = {}
+            for f in facts:
+                kinds[f["kind"]] = kinds.get(f["kind"], 0) + 1
+            rep += [f"nome: {raw['name']!r}", f"descrição: {len(raw['description'])} caracteres",
+                    f"imagens encontradas: {len(raw['images'])}", f"fatos: {len(facts)} {kinds}",
+                    f"usáveis: {sum(1 for f in facts if f['usable'])} | retidos por risco: {sum(1 for f in facts if f['risk'])}",
+                    f"não encontrado na fonte: {missing}"]
+            for f in facts[:8]:
+                rep.append(f"  [{f['kind']}{' RISCO' if f['risk'] else ''}] {f['text'][:90]}")
+            if n == 1 and raw["images"]:
+                try:
+                    r = http.get(raw["images"][0], binary=True)
+                    rep.append(f"imagem 1: {len(r.content) / 1024:.0f} KB | {r.headers.get('content-type')} | {raw['images'][0][:100]}")
+                except PipelineError as e:
+                    rep.append(f"imagem 1 FALHOU: {e}")
+        except PipelineError as e:
+            rep.append(f"FALHA: {str(e)[:200]}")
+    p = out_dir / "store-diagnostic.txt"
+    p.write_text("\n".join(rep), encoding="utf-8")
+    return p
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("cmd", choices=["discover", "brief"])
+    ap.add_argument("cmd", choices=["discover", "brief", "diagnose"])
     ap.add_argument("target", nargs="?", help="URL do produto ou id (no catálogo)")
     ap.add_argument("--catalog", type=Path)
     ap.add_argument("--limit", type=int, default=10)
@@ -597,6 +667,12 @@ def main(argv=None) -> int:
     a = ap.parse_args(argv)
     cfg, log = load_config(), Logger("fetcher")
     try:
+        if a.cmd == "diagnose":
+            from common import logs_dir
+            p = diagnose(cfg, log, logs_dir() / "diagnostico-loja")
+            print(p.read_text(encoding="utf-8"))
+            print(f"\nRelatório salvo em: {p}\n(HTML bruto na mesma pasta: list.html, produto1.html...)")
+            return 0
         raws = list_products(cfg, log, a.catalog, a.offline)
         if a.cmd == "discover":
             for r in raws[: a.limit]:

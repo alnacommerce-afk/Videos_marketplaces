@@ -12,6 +12,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 import unicodedata
 from pathlib import Path
 
@@ -256,3 +257,35 @@ def ffprobe_json(path: Path | str) -> dict:
     res = run([which_tool("ffprobe"), "-v", "error", "-show_format", "-show_streams",
                "-of", "json", str(path)])
     return json.loads(res.stdout.decode("utf-8"))
+
+
+# ----------------------------------------------------------------------------
+# Retomada após desligamento (trava de execução)
+# ----------------------------------------------------------------------------
+def boot_time() -> float:
+    """Instante (epoch) em que o computador ligou; 0.0 se não der para saber."""
+    try:
+        if os.name == "nt":
+            import ctypes
+            return time.time() - ctypes.windll.kernel32.GetTickCount64() / 1000.0
+        with open("/proc/uptime") as f:
+            return time.time() - float(f.read().split()[0])
+    except Exception:
+        return 0.0
+
+
+def pid_alive(pid: int) -> bool:
+    try:
+        if os.name == "nt":
+            import ctypes
+            h = ctypes.windll.kernel32.OpenProcess(0x1000, False, int(pid))  # QUERY_LIMITED_INFORMATION
+            if not h:
+                return False
+            code = ctypes.c_ulong()
+            ctypes.windll.kernel32.GetExitCodeProcess(h, ctypes.byref(code))
+            ctypes.windll.kernel32.CloseHandle(h)
+            return code.value == 259  # STILL_ACTIVE
+        os.kill(int(pid), 0)
+        return True
+    except (OSError, ValueError):
+        return False

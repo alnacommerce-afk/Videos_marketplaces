@@ -97,6 +97,8 @@ def build_video(brief: dict, cfg: dict, job_id: str, day: str | None = None, arc
     """Retorna o resumo do job. Levanta PipelineError se falhar (job fica FAILED, nunca READY)."""
     day = day or dt.date.today().isoformat()
     job_dir = work_dir(cfg) / day / job_id
+    if (job_dir / "status.json").exists():  # execução anterior interrompida (queda de energia etc.): recomeça limpo
+        shutil.rmtree(job_dir, ignore_errors=True)
     job_dir.mkdir(parents=True, exist_ok=True)
     log = Logger(job_id, extra_file=job_dir / "job.log.jsonl")
     st = JobStatus(job_dir, job_id, log, produto=brief["product"]["name"])

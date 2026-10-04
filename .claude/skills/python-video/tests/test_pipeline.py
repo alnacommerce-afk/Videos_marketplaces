@@ -185,6 +185,14 @@ class TestFetcher(unittest.TestCase):
         with self.assertRaises(PipelineError):
             http_.get(self.cfg["store"]["base_url"] + "/admin")
 
+    def test_diagnose_report(self):
+        p = pf.diagnose(self.cfg, LOG, TMP / "diag")
+        txt = p.read_text(encoding="utf-8")
+        self.assertIn("Produto 1", txt)
+        self.assertIn("fatos:", txt)
+        self.assertIn("RISCO", txt)                       # o 'frete grátis' do produto de teste foi retido
+        self.assertTrue((TMP / "diag" / "list.html").exists())
+
     def test_empty_store_explains(self):
         cfg = copy.deepcopy(self.cfg)
         cfg["store"]["list_path"] = "/sobre-vazio"
@@ -192,6 +200,56 @@ class TestFetcher(unittest.TestCase):
         with self.assertRaises(PipelineError) as cm:
             pf.list_products(cfg, LOG)
         self.assertIn("catálogo manual", str(cm.exception))
+
+
+class TestOps(unittest.TestCase):
+    """Operação: trava, diagnóstico, doctor, aviso e feedback."""
+
+    def test_lock_abandoned_and_live(self):
+        import scheduler as S
+        from common import work_dir
+        cfg = load_config()
+        lk = work_dir(cfg) / "daily.lock"
+        lk.parent.mkdir(parents=True, exist_ok=True)
+        lk.write_text(json.dumps({"pid": 2 ** 22 + 999}))
+        with S.Lock(cfg):
+            pass                                              # processo morto => assume
+        lk.write_text(json.dumps({"pid": os.getpid()}))
+        with self.assertRaises(PipelineError):
+            with S.Lock(cfg):
+                pass                                          # processo vivo => recusa
+        lk.unlink()
+
+    def test_doctor_runs(self):
+        import doctor
+        doctor.ROWS.clear()
+        rc = doctor.main(["--offline"])
+        self.assertEqual(rc, 0, doctor.ROWS)
+        self.assertTrue(any(r[1] == "FFmpeg" and r[0] == "OK" for r in doctor.ROWS))
+
+    def test_notify_format_and_channels(self):
+        import notify
+        summ = {"day": "2026-01-01", "ready": 2, "target": 3, "late": True,
+                "videos": [{"produto": "A", "arquetipo": "X", "arquivo": "G:/a.mp4"}],
+                "skipped": [{"slot": 3, "motivo": "sem produto"}], "errors": [{"erro": "boom"}]}
+        subj, body = notify.format_summary(summ)
+        self.assertIn("2/3", subj)
+        self.assertIn("08:00", body)
+        sent = []
+        notify._send_telegram = lambda text: sent.append(text) or True
+        res = notify.notify_daily(summ)
+        self.assertTrue(res["telegram"] and sent and (notify.logs_dir() / "ultimo-resumo.txt").exists())
+
+    def test_feedback(self):
+        import feedback
+        cfg = load_config()
+        save_json(Path(os.environ["ALNA_WORK_DIR"]) / "state.json", {"days": {"2026-06-01": {"slots": {
+            "1": {"archetype": "PRODUCT_HERO", "music": "PREMIUM", "hook": "question", "final_name": "video_01_x", "product_id": "p"}}}}})
+        self.assertEqual(feedback.cmd_add(cfg, "video_01", 4, "ótimo gancho", "2026-06-01"), 0)
+        self.assertEqual(feedback.cmd_add(cfg, "video_01", 9, "", "2026-06-01"), 2)
+        self.assertEqual(feedback.cmd_summary(), 0)
+        rec = [json.loads(l) for l in (feedback.logs_dir() / "feedback.jsonl").read_text(encoding="utf-8").splitlines()][-1]
+        self.assertEqual((rec["archetype"], rec["score"]), ("PRODUCT_HERO", 4))
 
 
 class TestStoryboard(unittest.TestCase):
@@ -437,12 +495,45 @@ class TestEndToEnd(unittest.TestCase):
         st = S.load_state(self.cfg)
         self.assertEqual(len(st["days"]["2026-02-01"]["slots"]), 3)
 
-    def test_deadline_stops_new_videos(self):
+    def test_catch_up_after_deadline(self):
+        """PC ligou depois das 08:00: retoma e produz o que falta (marcado como atrasado)."""
         import scheduler as S
-        res = S.run_daily(self.cfg, day="2026-03-01", catalog=TMP / "fx" / "catalog.json", voice_mode="off",
-                          out_root=TMP / "out-late", now_fn=lambda: __import__("datetime").datetime(2026, 3, 1, 8, 30))
-        self.assertEqual(res["ready"], 0)
-        self.assertTrue(all(s["motivo"] == "prazo" for s in res["skipped"]))
+        late = lambda: __import__("datetime").datetime(2026, 3, 1, 8, 30)
+        res = S.run_daily(self.cfg, day="2026-03-01", count=1, catalog=TMP / "fx" / "catalog.json", voice_mode="off",
+                          out_root=TMP / "out-late", now_fn=late)
+        self.assertEqual(res["ready"], 1)
+        self.assertTrue(res["late"])
+        cfg2 = copy.deepcopy(self.cfg)
+        cfg2["daily"]["catch_up_after_deadline"] = False
+        res2 = S.run_daily(cfg2, day="2026-03-02", count=1, catalog=TMP / "fx" / "catalog.json", voice_mode="off",
+                           out_root=TMP / "out-late", now_fn=late)
+        self.assertEqual(res2["ready"], 0)
+        self.assertTrue(all(s["motivo"] == "prazo" for s in res2["skipped"]))
+
+    def test_resume_after_power_loss(self):
+        """Queda de energia no meio: trava abandonada + job pela metade + cópia incompleta não impedem a retomada."""
+        import scheduler as S
+        from common import work_dir
+        day, out = "2026-05-01", TMP / "out-resume"
+        wd = work_dir(self.cfg)
+        wd.mkdir(parents=True, exist_ok=True)
+        (wd / "daily.lock").write_text(json.dumps({"pid": 2 ** 22 + 12345, "since": "x"}))      # processo que não existe mais
+        job = wd / day / "job-interrompido"
+        job.mkdir(parents=True)
+        save_json(job / "status.json", {"job_id": "job-interrompido", "status": "RENDERING", "history": [], "meta": {}})
+        (out / day).mkdir(parents=True)
+        (out / day / "video_01_x.mp4.partial").write_bytes(b"lixo")
+        res = S.run_daily(self.cfg, day=day, count=1, catalog=TMP / "fx" / "catalog.json", voice_mode="off", out_root=out,
+                          now_fn=lambda: __import__("datetime").datetime(2026, 5, 1, 2, 0))
+        self.assertEqual(res["ready"], 1)
+        self.assertFalse(list((out / day).glob("*.partial")), "cópia incompleta foi limpa")
+        # mesmo job_id de uma execução interrompida: recomeça limpo em vez de falhar
+        brief = self.brief(0)
+        wd2 = work_dir(self.cfg) / "2026-05-02" / "mesmo-id"
+        wd2.mkdir(parents=True)
+        save_json(wd2 / "status.json", {"job_id": "mesmo-id", "status": "VALIDATING", "history": [], "meta": {}})
+        r = build_video(brief, self.cfg, "mesmo-id", day="2026-05-02", seed=1, voice_mode="off", deliver_output=False)
+        self.assertEqual(r["status"], "READY")
 
     def test_not_enough_products_does_not_invent(self):
         import scheduler as S

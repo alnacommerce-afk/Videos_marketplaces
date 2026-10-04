@@ -77,7 +77,8 @@
     "deadline": "08:00",
     "cooldown_days": 10,
     "max_attempts_per_slot": 3,
-    "min_facts": 1
+    "min_facts": 1,
+    "catch_up_after_deadline": true
   },
   "brand": {
     "name": "ALNA",

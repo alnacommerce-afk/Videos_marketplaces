@@ -25,7 +25,7 @@ from xml.sax.saxutils import escape
 
 import product_fetcher as pf
 from build_video import build_video, deliver
-from common import (SKILL_DIR, Logger, PipelineError, cache_dir, iso, load_archetypes, load_config, load_json,
+from common import (SKILL_DIR, Logger, PipelineError, boot_time, cache_dir, iso, pid_alive, load_archetypes, load_config, load_json,
                     logs_dir, output_dir, save_json, slugify, work_dir)
 from storyboard import eligible_archetypes
 
@@ -44,18 +44,37 @@ def load_state(cfg: dict) -> dict:
 
 
 class Lock:
-    """Impede duas execuções simultâneas (o Task Scheduler também usa IgnoreNew; isto cobre execução manual)."""
+    """Impede duas execuções simultâneas (o Task Scheduler também usa IgnoreNew; isto cobre execução manual).
+
+    A trava é considerada ABANDONADA (e assumida) quando: o processo dono não existe mais, ou ela foi criada
+    antes do último boot do computador (queda de energia / reinício), ou tem mais de `stale_hours`. Assim,
+    se o PC desligar no meio da rotina, a próxima execução retoma sem esperar horas."""
 
     def __init__(self, cfg: dict, stale_hours: float = 6.0):
         self.path = work_dir(cfg) / "daily.lock"
         self.stale = stale_hours * 3600
 
+    def _abandoned(self) -> str | None:
+        try:
+            info = json.loads(self.path.read_text(encoding="utf-8"))
+        except Exception:
+            return "arquivo de trava ilegível"
+        mtime = self.path.stat().st_mtime
+        if mtime < boot_time() - 5:
+            return "criada antes do último boot do computador"
+        if not pid_alive(info.get("pid", -1)):
+            return f"processo {info.get('pid')} não existe mais"
+        if time.time() - mtime > self.stale:
+            return "mais de 6 h sem atualização"
+        return None
+
     def __enter__(self):
         self.path.parent.mkdir(parents=True, exist_ok=True)
         if self.path.exists():
-            age = time.time() - self.path.stat().st_mtime
-            if age < self.stale:
+            why = self._abandoned()
+            if why is None:
                 raise PipelineError(f"Já existe uma execução em andamento ({self.path}). Se for engano, apague o arquivo.")
+            Logger("lock").warn("trava abandonada: assumindo a execução", motivo=why)
         self.path.write_text(json.dumps({"pid": os.getpid(), "since": iso()}), encoding="utf-8")
         return self
 
@@ -104,6 +123,9 @@ def run_daily(cfg: dict | None = None, day: str | None = None, count: int | None
     with Lock(cfg):
         state = load_state(cfg)
         dayst = state["days"].setdefault(day, {"slots": {}})
+        for part in (out_root / day).glob("*.partial") if (out_root / day).exists() else []:
+            part.unlink(missing_ok=True)  # sobra de uma cópia interrompida por desligamento
+            log.warn("cópia incompleta removida", arquivo=part.name)
         # 1) entrega pendente: vídeo READY cuja cópia para a pasta final falhou antes (ex.: Drive offline)
         for slot, s in dayst["slots"].items():
             if s.get("status") == "READY" and not s.get("delivered"):
@@ -148,9 +170,13 @@ def run_daily(cfg: dict | None = None, day: str | None = None, count: int | None
 
         for slot in todo:
             if now_fn() >= deadline:
-                log.warn("prazo das 08:00 atingido: não inicio novos vídeos", slot=slot)
-                summary["skipped"].append({"slot": slot, "motivo": "prazo"})
-                continue
+                if not dcfg.get("catch_up_after_deadline", True):
+                    log.warn("prazo das 08:00 atingido: não inicio novos vídeos", slot=slot)
+                    summary["skipped"].append({"slot": slot, "motivo": "prazo"})
+                    continue
+                if not summary.get("late"):
+                    summary["late"] = True
+                    log.warn("passou das 08:00: produzindo os vídeos que faltam do dia mesmo assim (retomada)")
             ok = False
             while cursor < len(ranked) and not ok:
                 raw = ranked[cursor]
@@ -171,7 +197,7 @@ def run_daily(cfg: dict | None = None, day: str | None = None, count: int | None
                 last_arch = state["products"].get(pid, {}).get("archetypes", [])
                 tried: list[str] = []
                 for attempt in range(1, dcfg["max_attempts_per_slot"] + 1):
-                    if now_fn() >= deadline:
+                    if now_fn() >= deadline and not dcfg.get("catch_up_after_deadline", True):
                         break
                     job_id = f"{day}-s{slot}-{slugify(brief['product']['name'], 20)}-a{attempt}"
                     # a cada tentativa, outro arquétipo (se falhou, a estratégia pode ser o problema)
@@ -227,6 +253,9 @@ def _finish(cfg: dict, summary: dict, log: Logger, state: dict | None = None) ->
     summary["exit_code"] = 0 if summary["ready"] >= summary["target"] or summary.get("note") else (2 if summary["videos"] else 1)
     save_json(logs_dir() / f"daily-{summary['day']}.json", summary)
     log.info("rotina finalizada", prontos=summary["ready"], meta=summary["target"])
+    if not summary.get("note"):  # não avisa de novo quando só confirmou que o dia já estava completo
+        from notify import notify_daily
+        notify_daily(summary, log)
     return summary
 
 
