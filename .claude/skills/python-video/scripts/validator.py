@@ -113,7 +113,7 @@ def validate(mp4: Path, sb: dict, brief: dict, cfg: dict, render_report: dict | 
     c.add("decodificação sem erros (sem corrupção)", dec.returncode == 0 and not err, err[:200])
     if au is not None:
         try:
-            ln = loudnorm_params(mp4, cfg)
+            ln = loudnorm_params(mp4, cfg, pre=False)
             target = cfg["audio"]["loudnorm"]["I"]
             i_lufs, tp = float(ln["input_i"]), float(ln["input_tp"])
             c.add("áudio não está mudo", i_lufs > -40, f"{i_lufs:.1f} LUFS")

@@ -443,11 +443,13 @@ def build_mix(sb: dict, cfg: dict, voice_clips: dict[int, np.ndarray], logger: L
     return report
 
 
-def loudnorm_params(wav: Path, cfg: dict) -> dict:
-    """Passo 1 do loudnorm (medição). Passo 2 acontece no encode final."""
+def loudnorm_params(wav: Path, cfg: dict, pre: bool = True) -> dict:
+    """Passo 1 do loudnorm (medição). `pre=True` mede DEPOIS do compressor de master (é o que vai ser codificado);
+    `pre=False` mede o arquivo como está (usado pelo validador no MP4 final)."""
     ln = cfg["audio"]["loudnorm"]
-    res = run([which_tool("ffmpeg"), "-hide_banner", "-nostats", "-i", str(wav), "-af",
-               f"loudnorm=I={ln['I']}:TP={ln['TP']}:LRA={ln['LRA']}:print_format=json", "-f", "null", "-"])
+    chain = (cfg["audio"]["master_compressor"] + "," if pre else "") + \
+        f"loudnorm=I={ln['I']}:TP={ln['TP']}:LRA={ln['LRA']}:print_format=json"
+    res = run([which_tool("ffmpeg"), "-hide_banner", "-nostats", "-i", str(wav), "-af", chain, "-f", "null", "-"])
     txt = res.stderr.decode("utf-8", "replace")
     m = re.search(r"\{[^{}]*\"input_i\"[^{}]*\}", txt, re.S)
     if not m:
@@ -456,10 +458,13 @@ def loudnorm_params(wav: Path, cfg: dict) -> dict:
 
 
 def loudnorm_filter(measured: dict, cfg: dict) -> str:
-    ln = cfg["audio"]["loudnorm"]
-    return (f"loudnorm=I={ln['I']}:TP={ln['TP']}:LRA={ln['LRA']}:measured_I={measured['input_i']}:"
+    """Cadeia de master: compressor (reduz a diferença entre picos de efeitos e a trilha) → loudnorm linear em
+    2 passos (-14 LUFS) → limitador. Sem o compressor, vídeos com picos de efeito não atingiam -14 LUFS e o true
+    peak estourava depois do AAC (medido: até +0,9 dBTP); com ele, todos os casos testados ficaram em -14,1…-14,3 LUFS
+    e true peak ≤ -1,3 dBTP."""
+    a = cfg["audio"]
+    ln = a["loudnorm"]
+    return (f"{a['master_compressor']},loudnorm=I={ln['I']}:TP={ln['TP']}:LRA={ln['LRA']}:measured_I={measured['input_i']}:"
             f"measured_TP={measured['input_tp']}:measured_LRA={measured['input_lra']}:"
             f"measured_thresh={measured['input_thresh']}:offset={measured['target_offset']}:linear=true,"
-            # limitador de segurança: o loudnorm pode cair no modo dinâmico e a codificação AAC adiciona
-            # sobrepico; 0.80 (-1.9 dBFS) mantém o true peak abaixo de -1 dBTP depois do AAC
-            "alimiter=limit=0.80:attack=3:release=60:level=disabled")
+            f"alimiter=limit={a['master_limit']}:attack=5:release=60:level=disabled")

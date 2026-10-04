@@ -120,17 +120,19 @@
   },
   "audio": {
     "sample_rate": 48000,
-    "music_gain_db": -17.0,
+    "music_gain_db": -11.0,
     "duck_db": -14.0,
-    "sfx_gain_db": -9.0,
+    "sfx_gain_db": -12.0,
     "voice_gain_db": 0.0,
     "fade_in_s": 0.4,
     "fade_out_s": 1.2,
     "loudnorm": {
       "I": -14.0,
-      "TP": -1.5,
+      "TP": -2.0,
       "LRA": 11.0
-    }
+    },
+    "master_compressor": "acompressor=threshold=0.04:ratio=6:attack=3:release=60:makeup=3",
+    "master_limit": 0.708
   },
   "elevenlabs": {
     "api_key_env": "ELEVENLABS_API_KEY",
