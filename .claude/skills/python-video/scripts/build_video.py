@@ -181,6 +181,7 @@ def main(argv=None) -> int:
     src = ap.add_mutually_exclusive_group(required=True)
     src.add_argument("--catalog", type=Path, help="catálogo JSON manual (ver templates/catalog.example.json)")
     src.add_argument("--url", help="URL da página do produto na loja")
+    src.add_argument("--slug", help="identificador do produto na loja (ex.: toalha-de-capivara-70x130-200g); lê pela API da loja")
     ap.add_argument("--product", help="id ou nome do produto no catálogo (padrão: o primeiro)")
     ap.add_argument("--archetype", choices=sorted(load_archetypes()))
     ap.add_argument("--seed", type=int, default=1)
@@ -198,6 +199,11 @@ def main(argv=None) -> int:
             raw = next((r for r in raws if a.product in (r["id"], r["name"])), None) if a.product else raws[0]
             if raw is None:
                 raise PipelineError(f"Produto '{a.product}' não está no catálogo.")
+        elif a.slug:
+            raws = pf.list_products(cfg, log, None, a.offline)
+            raw = next((r for r in raws if a.slug in (r.get("id"), r["name"]) or (r.get("url") or "").rstrip("/").endswith("/" + a.slug)), None)
+            if raw is None:
+                raise PipelineError(f"Produto '{a.slug}' não está publicado na loja. Veja: python product_fetcher.py discover")
         else:
             http = pf.Http(cfg, log, offline=a.offline)
             raw = pf.extract_product_from_html(http.get(a.url), a.url)

@@ -260,13 +260,29 @@ def save_state(cfg: dict, state: dict) -> None:
 
 
 def _finish(cfg: dict, summary: dict, log: Logger, state: dict | None = None) -> dict:
+    """Fecha a execução. `ready` = vídeos prontos E entregues do DIA (somando execuções anteriores), não só desta.
+    Uma execução que só confirma 'já estava tudo pronto' NÃO sobrescreve o resumo do dia: entra em `runs`."""
     if state is not None:
         save_state(cfg, state)
+    state = state if state is not None else load_state(cfg)
+    slots = state["days"].get(summary["day"], {}).get("slots", {})
+    ready_total = sum(1 for sl in slots.values() if sl.get("status") == "READY" and sl.get("delivered"))
     summary["finished_at"] = iso()
-    summary["ready"] = len(summary["videos"])
-    summary["exit_code"] = 0 if summary["ready"] >= summary["target"] or summary.get("note") else (2 if summary["videos"] else 1)
-    save_json(logs_dir() / f"daily-{summary['day']}.json", summary)
-    log.info("rotina finalizada", prontos=summary["ready"], meta=summary["target"])
+    summary["produced_now"] = len(summary["videos"])
+    summary["ready"] = ready_total
+    summary["exit_code"] = 0 if ready_total >= summary["target"] or summary.get("note") else (2 if ready_total else 1)
+    path = logs_dir() / f"daily-{summary['day']}.json"
+    prev = load_json(path, default={}) if path.exists() else {}
+    run_rec = {k: summary.get(k) for k in ("started_at", "finished_at", "videos", "skipped", "errors", "late", "note", "produced_now")}
+    if summary.get("note") and prev:
+        prev["runs"] = prev.get("runs", []) + [run_rec]
+        prev["ready"] = ready_total
+        save_json(path, prev)
+    else:
+        data = dict(summary)
+        data["runs"] = prev.get("runs", []) + [run_rec]
+        save_json(path, data)
+    log.info("rotina finalizada", prontos_no_dia=ready_total, produzidos_agora=summary["produced_now"], meta=summary["target"])
     if not summary.get("note"):  # não avisa de novo quando só confirmou que o dia já estava completo
         from notify import notify_daily
         notify_daily(summary, log)

@@ -172,14 +172,24 @@ def check_task():
     if os.name != "nt":
         add("AVISO", "Tarefa agendada", "só verificável no Windows")
         return
-    r = subprocess.run(["schtasks", "/Query", "/TN", name, "/FO", "LIST", "/V"], capture_output=True, text=True, errors="replace")
+    ps = (f"$t=Get-ScheduledTask -TaskName '{name}' -ErrorAction Stop; $i=$t | Get-ScheduledTaskInfo; "
+          "[pscustomobject]@{state=[string]$t.State; next=$(if($i.NextRunTime){$i.NextRunTime.ToString('yyyy-MM-dd HH:mm')}); "
+          "last=$(if($i.LastRunTime){$i.LastRunTime.ToString('yyyy-MM-dd HH:mm')}); result=$i.LastTaskResult} | ConvertTo-Json -Compress")
+    r = subprocess.run(["powershell", "-NoProfile", "-Command", ps], capture_output=True, text=True, errors="replace")
     if r.returncode != 0:
         add("FALHA", "Tarefa agendada", f"'{name}' não existe", "python scheduler.py install-task")
         return
-    info = {l.split(":", 1)[0].strip(): l.split(":", 1)[1].strip() for l in r.stdout.splitlines() if ":" in l}
-    nxt = info.get("Next Run Time") or info.get("Próxima Hora de Execução") or "?"
-    last = info.get("Last Result") or info.get("Último Resultado") or "?"
-    add("OK", "Tarefa agendada", f"registrada; próxima execução: {nxt}; último resultado: {last}")
+    try:
+        info = json.loads(r.stdout.strip())
+    except Exception:
+        add("OK", "Tarefa agendada", "registrada (não consegui ler os detalhes)")
+        return
+    res = info.get("result")
+    meaning = {0: "sucesso", 267011: "ainda não rodou", 267009: "rodando agora", 267014: "interrompida"}.get(res, f"código {res}")
+    nxt = info.get("next") or "—"
+    ok = info.get("state") in ("Ready", "Running") and nxt != "—"
+    add("OK" if ok else "AVISO", "Tarefa agendada", f"estado {info.get('state')}; próxima execução: {nxt}; última: {info.get('last') or '—'} ({meaning})",
+        "" if ok else "Se estiver Disabled: Enable-ScheduledTask -TaskName " + name)
 
 
 def check_last_runs():

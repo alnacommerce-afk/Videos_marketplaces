@@ -1081,6 +1081,12 @@ class TestEndToEnd(unittest.TestCase):
         again = S.run_daily(self.cfg, day="2026-02-01", catalog=TMP / "fx" / "catalog4.json", voice_mode="off", out_root=out,
                             now_fn=lambda: __import__("datetime").datetime(2026, 2, 1, 5, 0))
         self.assertEqual(again["videos"], [])
+        from common import logs_dir
+        daily = load_json(logs_dir() / "daily-2026-02-01.json")
+        self.assertEqual(daily["ready"], 3, "a rodada de recuperação (sem nada a fazer) não pode zerar o resumo do dia")
+        self.assertEqual(again["ready"], 3)
+        self.assertEqual(len(daily["videos"]), 3)
+        self.assertGreaterEqual(len(daily["runs"]), 2)
         self.assertEqual(len(list((out / "2026-02-01").glob("video_*.mp4"))), 3)
         # dia seguinte: evita repetir os produtos de ontem quando há alternativa
         st = S.load_state(self.cfg)
