@@ -225,11 +225,15 @@ def _fft_reverb(x, sr, wet=0.25, length=0.9, seed=1):
     return x * (1 - wet) + y * wet
 
 
-def synth_music(profile: str, dur: float, sr: int = SR_DEFAULT, seed: int = 11) -> np.ndarray:
+def synth_music(profile: str, dur: float, sr: int = SR_DEFAULT, seed: int = 11, bpm: float | None = None,
+                energy_pts: list | None = None) -> np.ndarray:
+    """Trilha original em camadas (pad, melodia, baixo, percussão). Com `energy_pts` [(t, 0..1)] ela
+    CRESCE: começa mínima (pad) e acumula melodia → baixo → percussão até o clímax. Os tempos fortes caem
+    em k·(60/bpm) a partir de t=0, então cortes alinhados à grade batem exatamente na batida."""
     p = PROFILES[profile]
     rng = np.random.default_rng(seed)
     n = int((dur + 1.5) * sr)
-    beat = 60.0 / p["bpm"]
+    beat = 60.0 / (bpm or p["bpm"])
     bar = beat * 4
     pad = np.zeros(n, dtype=np.float32)
     mel = np.zeros(n, dtype=np.float32)
@@ -295,13 +299,77 @@ def synth_music(profile: str, dur: float, sr: int = SR_DEFAULT, seed: int = 11) 
                 nz = np.diff(rng.standard_normal(len(th) + 1)).astype(np.float32) * np.exp(-th / 0.015)
                 add(drums, nz * (0.16 if d == "four" else 0.07), t0 + k * beat)
     mel = _fft_reverb(mel, sr, wet=0.3)
-    mono = pad * 0.9 + mel + bass + drums
+    nout = int(dur * sr)
+    layers = {"pad": pad * 0.9, "mel": mel, "bass": bass, "drums": drums}
+    if energy_pts:
+        t = np.arange(len(pad)) / sr
+        ts, es = zip(*energy_pts)
+        e = np.interp(t, ts, es)
+        k = int(0.6 * sr)
+        e = np.convolve(np.pad(e, (k // 2, k - k // 2 - 1), mode="edge"), np.ones(k) / k, mode="valid")[: len(t)]
+        sm = lambda x0, x1: np.clip((e - x0) / (x1 - x0), 0, 1) ** 2 * (3 - 2 * np.clip((e - x0) / (x1 - x0), 0, 1))
+        gains = {"pad": 0.30 + 0.70 * e, "mel": sm(0.18, 0.60) * (0.4 + 0.6 * e), "bass": sm(0.40, 0.70),
+                 "drums": sm(0.66, 0.90)}
+        layers = {k_: v * gains[k_] for k_, v in layers.items()}
+    mono = sum(layers.values())
     out = _stereo(mono)
-    # leve abertura estéreo no pad/melodia (Haas)
-    delay = int(0.012 * sr)
+    delay = int(0.012 * sr)  # leve abertura estéreo (Haas)
     out[delay:, 1] = out[delay:, 1] * 0.8 + mono[:-delay] * 0.2
-    out = out[: int(dur * sr)]
+    out = out[:nout]
     return out / (np.max(np.abs(out)) + 1e-9) * 0.5
+
+
+def energy_points(sb: dict) -> list[tuple[float, float]]:
+    """Curva de energia da trilha: começa baixa (mais baixa em ritmo lento) e SOBE com o tempo até o máximo no CTA.
+    É monotônica de propósito: o ápice da música coincide com o fim do vídeo (revelação/CTA), não com a primeira
+    cena de 'produto' — em alguns arquétipos o produto aparece aos 2–3 s e o clímax lá seria cedo demais."""
+    sc = sb["scenes"]
+    D = sb["total_duration"]
+    start = {"slow": 0.12, "medium": 0.20, "fast": 0.36}.get(sb["strategy"].get("pace", "medium"), 0.20)
+    pts = []
+    for i, s in enumerate(sc):
+        u = (s["start"] + s["duration"] * 0.5) / D
+        e = start + (0.92 - start) * (u ** 1.15)
+        if s["role"] == "CTA" or i == len(sc) - 1:
+            e = 1.0
+        pts.append((round(s["start"], 3), round(e, 3)))
+    pts.append((round(D, 3), 1.0))
+    return pts
+
+
+def synth_texture(kind: str, dur: float, sr: int = SR_DEFAULT, seed: int = 5) -> np.ndarray:
+    """Cama sonora contínua e discreta (nunca silêncio). room = ambiente grave; air = sopro agudo; tick = micro cliques."""
+    rng = np.random.default_rng(seed)
+    n = int(dur * sr)
+    x = rng.standard_normal(n).astype(np.float32)
+    if kind == "air":
+        x = np.convolve(np.diff(x, prepend=0), np.ones(3) / 3, mode="same")
+    elif kind == "tick":
+        x = np.convolve(x, np.ones(300) / 300, mode="same") * 3
+        pos = 0.0
+        while pos < dur - 0.05:
+            i = int(pos * sr)
+            tt = np.arange(int(0.012 * sr)) / sr
+            x[i:i + len(tt)] += np.sin(2 * np.pi * 1800 * tt) * np.exp(-tt / 0.002) * 0.35
+            pos += rng.uniform(0.28, 0.65)
+    else:  # room
+        x = np.convolve(x, np.ones(260) / 260, mode="same") * 4
+    slow = 0.75 + 0.25 * np.sin(2 * np.pi * rng.uniform(0.15, 0.35) * np.arange(n) / sr + rng.uniform(0, 6.28))
+    x = x * slow
+    return (x / (np.max(np.abs(x)) + 1e-9)).astype(np.float32)
+
+
+TEXTURE_FOR_SHOT = {"hero": "room", "hero_wide": "room", "detail": "air", "detail2": "air", "macro": "tick", "macro2": "tick"}
+
+
+def plan_music(sb: dict, cfg: dict, seed: int) -> dict:
+    """Decide a fonte da trilha ANTES do corte final, para travar os cortes na batida (beat-lock)."""
+    profile = sb["strategy"]["music_profile"]
+    track = find_licensed_track(profile, cfg, seed)
+    if track:
+        m = re.search(r"(\d{2,3})\s*[-_ ]?bpm", track.stem, re.I)
+        return {"source": "arquivo", "file": track.name, "profile": profile, "bpm": float(m.group(1)) if m else None, "tunable": False}
+    return {"source": "sintetizada", "profile": profile, "bpm": float(PROFILES[profile]["bpm"]), "tunable": True}
 
 
 def find_licensed_track(profile: str, cfg: dict, rng_seed: int) -> Path | None:
@@ -317,20 +385,27 @@ def find_licensed_track(profile: str, cfg: dict, rng_seed: int) -> Path | None:
     return cands[rng_seed % len(cands)]
 
 
-def get_music(profile: str, dur: float, cfg: dict, seed: int, logger: Logger) -> tuple[np.ndarray, dict]:
+def get_music(profile: str, dur: float, cfg: dict, seed: int, logger: Logger, bpm: float | None = None,
+              energy_pts: list | None = None) -> tuple[np.ndarray, dict]:
     sr = cfg["audio"]["sample_rate"]
     track = find_licensed_track(profile, cfg, seed)
     if track:
         arr = decode_audio(track, sr)
         if len(arr) < int(dur * sr):
             arr = np.tile(arr, (int(np.ceil(dur * sr / len(arr))), 1))
-        off = 0
-        arr = arr[off:off + int(dur * sr)]
+        arr = arr[:int(dur * sr)]
         arr = arr / (np.max(np.abs(arr)) + 1e-9) * 0.5
-        logger.info("trilha da pasta music/", arquivo=track.name, perfil=profile)
-        return arr.astype(np.float32), {"source": "arquivo", "file": track.name, "profile": profile}
-    logger.info("trilha sintetizada (original, sem copyright)", perfil=profile)
-    return synth_music(profile, dur, sr, seed), {"source": "sintetizada", "profile": profile}
+        if energy_pts:  # sem camadas separadas, o "crescendo" é uma rampa de volume suave (−4 dB → 0 dB)
+            t = np.arange(len(arr)) / sr
+            ts, es = zip(*energy_pts)
+            e = np.interp(t, ts, es)
+            arr = arr * db(-4.0 * (1 - e))[:, None]
+        logger.info("trilha da pasta music/", arquivo=track.name, perfil=profile, bpm=bpm)
+        return arr.astype(np.float32), {"source": "arquivo", "file": track.name, "profile": profile, "bpm": bpm,
+                                        "arrangement": "rampa de volume"}
+    logger.info("trilha sintetizada (original, sem copyright)", perfil=profile, bpm=bpm)
+    return synth_music(profile, dur, sr, seed, bpm, energy_pts), {"source": "sintetizada", "profile": profile, "bpm": bpm or PROFILES[profile]["bpm"],
+                                                                  "arrangement": "camadas" if energy_pts else "plana"}
 
 
 # ----------------------------------------------------------------------------
@@ -394,7 +469,9 @@ def build_mix(sb: dict, cfg: dict, voice_clips: dict[int, np.ndarray], logger: L
         pk = np.max(np.abs(voice))
         voice = voice / (pk + 1e-9) * 0.8
     # 2) trilha + automação de volume + ducking
-    music, minfo = get_music(sb["strategy"]["music_profile"], D, cfg, seed, logger)
+    mplan = sb.get("music") or {}
+    epts = energy_points(sb)
+    music, minfo = get_music(sb["strategy"]["music_profile"], D, cfg, seed, logger, bpm=mplan.get("bpm"), energy_pts=epts)
     if len(music) < N:
         music = np.pad(music, ((0, N - len(music)), (0, 0)))
     music = music[:N] * db(a["music_gain_db"])
@@ -420,14 +497,36 @@ def build_mix(sb: dict, cfg: dict, voice_clips: dict[int, np.ndarray], logger: L
             if i0 < N:
                 sfx_bus[i0:i1] += clip[:i1 - i0]
             sfx_events.append({"type": ev["type"], "at": round(at, 3), "scene": s["index"]})
-    mix = voice + music_final + sfx_bus
+    # 3b) textura contínua + pontes sonoras (J-cut): a cama de cada cena entra ANTES do corte e cruza com a anterior
+    tex_bus = np.zeros((N, 2), dtype=np.float32)
+    bridges = []
+    pre, post = a.get("texture_pre_s", 0.25), 0.22
+    tgain = db(a.get("texture_gain_db", -22.0))
+    for i, s in enumerate(sb["scenes"]):
+        kind = TEXTURE_FOR_SHOT.get(s["camera"]["shot"], "room")
+        t0 = s["start"] - (pre if i > 0 else 0.0)
+        t1 = s["start"] + s["duration"] + (post if i + 1 < len(sb["scenes"]) else 0.0)
+        i0, i1 = max(0, int(t0 * sr)), min(N, int(t1 * sr))
+        if i1 <= i0:
+            continue
+        tex = synth_texture(kind, (i1 - i0) / sr + 0.01, sr, seed=17 + i)[: i1 - i0]
+        tt = np.arange(i1 - i0) / sr + i0 / sr
+        env = np.clip((tt - t0) / max(pre if i > 0 else 0.05, 1e-3), 0, 1) * np.clip((t1 - tt) / post, 0, 1)
+        tex_bus[i0:i1] += _stereo(tex * env * tgain, pan=(-0.2 if i % 2 else 0.2))
+        if i > 0:
+            bridges.append({"cut": round(s["start"], 3), "texture_start": round(t0, 3), "kind": kind, "lead_s": round(s["start"] - t0, 3)})
+    mix = voice + music_final + sfx_bus + tex_bus
     mix *= np.minimum(1.0, (D - t) / 0.25)[:, None]  # fade final curtíssimo contra clique
     pk = np.max(np.abs(mix))
     if pk > 0.98:
         mix = np.tanh(mix * (0.98 / pk) * 1.1) / np.tanh(1.1)
     write_wav(out_wav, mix, sr)
     # 4) relatório: mede o ducking de verdade
+    third = N // 3
+    rms = lambda x: 20 * np.log10(float(np.sqrt((np.abs(x).max(axis=1)[:] ** 2).mean())) + 1e-9)
     report = {"sample_rate": sr, "duration": D, "music": minfo, "voice_events": voice_events, "sfx_events": sfx_events,
+              "bridges": bridges, "beat_lock": bool(mplan.get("locked", False)),
+              "music_rms_first_third_db": round(rms(music[:third] * 1.0), 2), "music_rms_last_third_db": round(rms(music[-third:]), 2),
               "has_voice": has_voice, "voice_cut": any(e["cut"] or e["end"] > e["scene_end"] + 0.01 for e in voice_events)}
     if has_voice:
         mask = np.abs(voice).max(axis=1) > 0.02

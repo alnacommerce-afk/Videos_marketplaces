@@ -16,3 +16,6 @@ Como a skill escolhe a faixa: pelo **perfil** no nome do arquivo ou da subpasta 
 Exemplos: `music/premium/suave-01.mp3`, `music/energetic_batida.wav`. Formatos: mp3, wav, m4a, flac, ogg. Pelo menos ~20 s de duração (se for menor, repete). Ideal: 2 a 3 faixas por perfil, para os vídeos não soarem iguais; a escolha alterna entre elas.
 
 Sem arquivo para o perfil, a skill usa a trilha **sintetizada** (original, sem copyright, mais simples).
+
+## Corte na batida com a sua música
+Para os cortes caírem na batida, escreva o BPM no nome do arquivo: `premium_92bpm_suave.mp3`, `energetic-128 bpm.wav`. A faixa deve **começar exatamente no primeiro tempo** (sem silêncio no início). Sem BPM no nome, os cortes ficam livres (o vídeo sai normalmente, só sem o travamento).

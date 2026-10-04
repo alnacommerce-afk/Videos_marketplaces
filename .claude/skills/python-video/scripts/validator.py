@@ -14,7 +14,7 @@ from pathlib import Path
 
 import numpy as np
 
-from audio import loudnorm_params
+from audio import decode_audio, loudnorm_params
 from common import (Logger, PipelineError, ffprobe_json, load_config, load_json, run, save_json, which_tool)
 from storyboard import expected_text
 
@@ -180,6 +180,39 @@ def validate(mp4: Path, sb: dict, brief: dict, cfg: dict, render_report: dict | 
             c.add("música não cobre a voz (voz ≥ 12 dB acima)", gap >= 12.0, f"{gap:.1f} dB")
         c.add("trilha licenciada/sintetizada", audio_report["music"]["source"] in ("arquivo", "sintetizada"),
               json.dumps(audio_report["music"], ensure_ascii=False), severity="warn")
+
+    # técnicas de estrutura: batida, continuidade, pontes sonoras, textura, crescendo
+    cont = sb.get("continuity")
+    if cont:
+        c.add("continuidade de movimento (sem inverter o pan entre cenas)", cont["pan_reversals"] <= 1,
+              f"{cont['pan_reversals']} inversão(ões) em {cont['pairs']} pares", severity="warn")
+    mus = sb.get("music") or {}
+    if mus.get("locked"):
+        p = 60.0 / mus["bpm"]
+        tol = 0.5 / fmt["fps"] + 0.006
+        cuts = [s["start"] for s in sb["scenes"][1:]] + [sb["total_duration"]]
+        worst = max(abs(t - round(t / p) * p) for t in cuts)
+        c.add("cortes na batida (erro ≤ meio quadro)", worst <= tol, f"erro máx. {worst * 1000:.1f} ms a {mus['bpm']} BPM")
+    else:
+        c.add("cortes na batida", False, "trilha sem BPM conhecido: cortes livres", severity="warn")
+    if audio_report:
+        br = audio_report.get("bridges", [])
+        c.add("pontes sonoras (som da cena entra antes do corte)",
+              len(br) == len(sb["scenes"]) - 1 and all(b["lead_s"] >= 0.15 for b in br),
+              f"{len(br)} pontes, antecedência ≥ {min([b['lead_s'] for b in br], default=0):.2f}s")
+        if audio_report["music"].get("source") == "sintetizada":
+            rise = audio_report["music_rms_last_third_db"] - audio_report["music_rms_first_third_db"]
+            c.add("trilha cresce até o clímax (≥ 3 dB do início ao fim)", rise >= 3.0, f"+{rise:.1f} dB", severity="warn")
+    if au is not None:
+        try:
+            pcm = decode_audio(mp4, cfg["audio"]["sample_rate"])
+            sr_ = cfg["audio"]["sample_rate"]
+            w = int(0.4 * sr_)
+            n_w = max(1, (len(pcm) - w) // w)
+            lv = [20 * np.log10(float(np.sqrt((pcm[i * w:(i + 1) * w] ** 2).mean())) + 1e-9) for i in range(n_w)]
+            c.add("áudio nunca em silêncio (textura contínua)", min(lv) > -60.0, f"janela mais baixa {min(lv):.0f} dBFS")
+        except PipelineError as e:
+            c.add("áudio nunca em silêncio", False, str(e)[:100])
 
     # visual: amostras de quadros reais do MP4
     times = [0.1] + [s["start"] + s["duration"] * 0.6 for s in sb["scenes"]]

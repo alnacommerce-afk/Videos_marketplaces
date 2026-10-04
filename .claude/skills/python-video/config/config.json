@@ -131,8 +131,10 @@
       "TP": -2.0,
       "LRA": 11.0
     },
-    "master_compressor": "acompressor=threshold=0.04:ratio=6:attack=3:release=60:makeup=3",
-    "master_limit": 0.708
+    "master_compressor": "acompressor=threshold=0.16:ratio=8:attack=2:release=50:makeup=2",
+    "master_limit": 0.708,
+    "texture_gain_db": -22.0,
+    "texture_pre_s": 0.25
   },
   "elevenlabs": {
     "api_key_env": "ELEVENLABS_API_KEY",

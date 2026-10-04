@@ -252,6 +252,105 @@ class TestOps(unittest.TestCase):
         self.assertEqual((rec["archetype"], rec["score"]), ("PRODUCT_HERO", 4))
 
 
+class TestStructureTechniques(unittest.TestCase):
+    """Continuidade de movimento, corte na batida, crescendo, texturas e pontes sonoras."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.cfg = load_config()
+        cls.briefs = [pf.get_brief(r, cls.cfg, LOG) for r in pf.load_catalog(make_catalog(TMP / "fx"))]
+
+    def test_pan_direction_is_continuous(self):
+        pairs = rev = 0
+        for b in self.briefs:
+            for arch, why in SB.eligible_archetypes(b).items():
+                if why:
+                    continue
+                for seed in range(1, 6):
+                    st = SB.build_storyboard(b, self.cfg, arch, seed)["continuity"]
+                    pairs += st["pairs"]
+                    rev += st["pan_reversals"]
+        self.assertGreater(pairs, 100)
+        self.assertEqual(rev, 0, "pan nunca inverte o sentido entre cenas seguidas")
+
+    def test_transition_direction_follows_camera(self):
+        import renderer as R
+        from PIL import Image
+        rd = R.Renderer.__new__(R.Renderer)
+        rd.W, rd.H = 400, 200
+        A = Image.new("RGB", (400, 200), (255, 0, 0))
+        B = Image.new("RGB", (400, 200), (0, 0, 255))
+        fwd = rd.transition("directional_wipe", A, B, 0.6, +1)
+        back = rd.transition("directional_wipe", A, B, 0.6, -1)
+        self.assertGreater(fwd.getpixel((20, 100))[2], 200)       # +1: B revelado da esquerda
+        self.assertGreater(fwd.getpixel((380, 100))[0], 200)
+        self.assertGreater(back.getpixel((380, 100))[2], 200)     # -1: B revelado da direita
+        self.assertGreater(back.getpixel((20, 100))[0], 200)
+
+    def test_beat_lock_aligns_every_cut(self):
+        for b in self.briefs:
+            for arch, why in SB.eligible_archetypes(b).items():
+                if why:
+                    continue
+                sb = SB.build_storyboard(b, self.cfg, arch, 3)
+                plan = A.plan_music(sb, self.cfg, 14)
+                sb, info = SB.beat_lock(sb, self.cfg, plan)
+                self.assertIsNotNone(info, arch)
+                p, fps = 60.0 / info["bpm"], sb["format"]["fps"]
+                cuts = [s["start"] for s in sb["scenes"][1:]] + [sb["total_duration"]]
+                self.assertLessEqual(max(abs(t - round(t / p) * p) for t in cuts), 0.5 / fps + 0.006, arch)
+                self.assertTrue(all(s["duration"] >= 1.2 - 1e-6 for s in sb["scenes"]))
+                self.assertTrue(15 <= sb["total_duration"] <= 18)
+                self.assertAlmostEqual(sum(s["duration"] for s in sb["scenes"]), sb["total_duration"], places=2)
+                self.assertLessEqual(abs(info["bpm"] / plan["bpm"] - 1), 0.1001)
+
+    def test_beat_lock_respects_voice_and_untagged_tracks(self):
+        sb = SB.build_storyboard(self.briefs[0], self.cfg, "PRODUCT_HERO", 2)
+        needs = {s["index"]: s["duration"] + 0.9 for s in sb["scenes"][:2]}
+        sb, _ = SB.retime(sb, needs, self.cfg)
+        sb, info = SB.beat_lock(sb, self.cfg, A.plan_music(sb, self.cfg, 5), needs)
+        for s in sb["scenes"]:
+            if s["index"] in needs:
+                self.assertGreaterEqual(s["duration"], needs[s["index"]] - 0.04)
+        sb2 = SB.build_storyboard(self.briefs[0], self.cfg, "PRODUCT_HERO", 2)
+        _, none = SB.beat_lock(sb2, self.cfg, {"source": "arquivo", "bpm": None, "tunable": False})
+        self.assertIsNone(none, "faixa sem BPM no nome: cortes livres")
+        _, fixed = SB.beat_lock(sb2, self.cfg, {"source": "arquivo", "bpm": 100.0, "tunable": False})
+        self.assertTrue(fixed is None or fixed["bpm"] == 100.0, "faixa com BPM não é re-sintonizada")
+
+    def test_synth_beats_land_on_grid(self):
+        sr, bpm = 48000, 120.0
+        m = A.synth_music("ENERGETIC", 6.0, sr, 11, bpm=bpm)
+        lp = np.convolve(np.abs(m[:, 0]), np.ones(96) / 96, mode="same")
+        p = 60.0 / bpm
+        for k in (2, 4, 6):                                   # kick de 4 tempos: onsets em k·p
+            seg = lp[int((k * p - 0.04) * sr):int((k * p + 0.10) * sr)]
+            thr = seg[: int(0.03 * sr)].mean() + 0.35 * (seg.max() - seg[: int(0.03 * sr)].mean())
+            onset = np.argmax(seg > thr) / sr - 0.04
+            self.assertLess(abs(onset), 0.015, f"batida {k}: {onset * 1000:.1f} ms")
+
+    def test_crescendo_layers(self):
+        sb = SB.build_storyboard(self.briefs[0], self.cfg, "PRODUCT_HERO", 2)
+        pts = A.energy_points(sb)
+        es = [e for _, e in pts]
+        self.assertEqual(es, sorted(es), "energia só sobe")
+        self.assertEqual(es[-1], 1.0)
+        m = A.synth_music("MODERN", sb["total_duration"], 48000, 11, energy_pts=pts)
+        n = len(m)
+        rms = lambda x: 20 * np.log10(float(np.sqrt((x ** 2).mean())) + 1e-9)
+        self.assertGreater(rms(m[2 * n // 3:]) - rms(m[: n // 3]), 5.0, "trilha cresce > 5 dB do início ao fim")
+
+    def test_textures_are_continuous_and_bridge_cuts(self):
+        sb = SB.build_storyboard(self.briefs[0], self.cfg, "PRODUCT_HERO", 2)
+        rep = A.build_mix(sb, self.cfg, {}, LOG, TMP / "tex.wav", seed=3)
+        self.assertEqual(len(rep["bridges"]), len(sb["scenes"]) - 1)
+        self.assertTrue(all(b["lead_s"] >= 0.2 for b in rep["bridges"]))
+        pcm = A.decode_audio(TMP / "tex.wav", 48000)
+        w = int(0.4 * 48000)
+        self.assertGreater(min(20 * np.log10(float(np.sqrt((pcm[i * w:(i + 1) * w] ** 2).mean())) + 1e-9)
+                               for i in range(1, len(pcm) // w - 1)), -60.0)
+
+
 class TestStoryboard(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -417,6 +516,11 @@ class TestEndToEnd(unittest.TestCase):
         self.assertEqual([h["status"] for h in st["history"]], ["QUEUED", "PROCESSING", "RENDERING", "VALIDATING", "READY"])
         val = load_json(job / "validation.json")
         self.assertTrue(val["ok"], val["errors"])
+        names = {c["name"]: c for c in val["checks"]}
+        for key in ("cortes na batida (erro ≤ meio quadro)", "pontes sonoras (som da cena entra antes do corte)",
+                    "áudio nunca em silêncio (textura contínua)", "trilha cresce até o clímax (≥ 3 dB do início ao fim)"):
+            self.assertTrue(names[key]["ok"], names[key])
+        self.assertTrue(load_json(job / "storyboard.json")["music"]["locked"])
         self.assertTrue((TMP / "out" / "2026-01-01" / "_auditoria" / "video_01_produto-teste-um" / "script.md").exists())
 
     def test_validator_rejects_corrupt_and_invented(self):

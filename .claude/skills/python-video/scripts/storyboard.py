@@ -127,6 +127,58 @@ class FactPool:
         return f
 
 
+
+# ----------------------------------------------------------------------------
+# Continuidade de movimento (movement match)
+# ----------------------------------------------------------------------------
+_AXIS = {"pan_h": "x", "diagonal": "x", "pan_v": "y", "push_in": "z", "pull_out": "z"}
+
+
+def momentum_of(cam: dict):
+    """Eixo e sentido em que a câmera 'termina' a cena: ('x'|'y'|'z', ±1) ou None."""
+    m = cam["move"]
+    if m in ("pan_h", "diagonal", "pan_v"):
+        return (_AXIS[m], cam.get("dir", 1))
+    if m == "push_in":
+        return ("z", 1)
+    if m == "pull_out":
+        return ("z", -1)
+    return None
+
+
+def choose_move(options: list[str], mom, rng: random.Random) -> str:
+    """Entre os movimentos permitidos pela cena, prefere o que continua o impulso da cena anterior
+    (mesmo eixo/sentido); evita inverter bruscamente (ex.: push-in seguido de pull-out)."""
+    if len(options) == 1 or mom is None:
+        return rng.choice(options)
+
+    def score(o):
+        axis = _AXIS.get(o)
+        if axis == mom[0]:
+            if axis == "z":
+                return 2.0 if (o == "push_in") == (mom[1] > 0) else 0.3
+            return 2.0
+        return 1.0
+    return rng.choices(options, weights=[score(o) for o in options], k=1)[0]
+
+
+def continuity_stats(scenes: list[dict]) -> dict:
+    """Quantas trocas mantêm o sentido do movimento. Inversões de pan (esquerda↔direita) são o que 'quebra' o olhar."""
+    pairs = rev = zrev = 0
+    prev = None
+    for s in scenes:
+        cur = momentum_of(s["camera"])
+        if prev and cur:
+            if prev[0] == cur[0] and cur[0] in ("x", "y"):
+                pairs += 1
+                rev += int(prev[1] != cur[1])
+            elif prev[0] == cur[0] == "z":
+                pairs += 1
+                zrev += int(prev[1] != cur[1])
+        prev = cur or prev
+    return {"pairs": pairs, "pan_reversals": rev, "zoom_reversals": zrev}
+
+
 # ----------------------------------------------------------------------------
 # Construção
 # ----------------------------------------------------------------------------
@@ -191,6 +243,7 @@ def build_storyboard(brief: dict, cfg: dict, archetype: str, seed: int | None = 
     hook_style = rng.choice(hook_pool)
 
     scenes, t, last_img, detail_i = [], 0.0, -1, 0
+    mom = None  # impulso de câmera da cena anterior
     notes: list[str] = []
     for i, (beat, dur) in enumerate(zip(beats, durs)):
         shot = beat["shot"]
@@ -202,12 +255,13 @@ def build_storyboard(brief: dict, cfg: dict, archetype: str, seed: int | None = 
             img_i = (rng.randrange(len(imgs)) + detail_i) % len(imgs) if len(imgs) > 1 else 0
             if img_i == last_img and len(imgs) > 1:
                 img_i = (img_i + 1) % len(imgs)
-        move = rng.choice(beat["move"])
+        move = choose_move(beat["move"], mom, rng)
+        pan_dir = mom[1] if (mom and mom[0] == _AXIS.get(move) and move in ("pan_h", "diagonal", "pan_v")) else None
         transition = beat.get("transition", "hard_cut")
         start_from = None
         if transition == "match_cut" and scenes and scenes[-1]["image_index"] == img_i:
             start_from = scenes[-1]["camera"]
-        cam = plan_camera(shot, move, sizes[img_i], focals[img_i], W, H, rng, start_from)
+        cam = plan_camera(shot, move, sizes[img_i], focals[img_i], W, H, rng, start_from, direction=pan_dir)
         tw = beat.get("tw", 0.0) if transition not in ("hard_cut", "match_cut") else 0.0
 
         text, voice = None, None
@@ -267,12 +321,14 @@ def build_storyboard(brief: dict, cfg: dict, archetype: str, seed: int | None = 
             "index": i + 1, "role": beat["role"], "start": round(t, 3), "duration": round(dur, 3),
             "image_index": img_i, "image": imgs[img_i]["path"], "image_sha256": imgs[img_i]["sha256"],
             "camera": cam, "focus_pull": bool(beat.get("focus_pull")),
-            "transition_in": {"type": transition, "duration": tw}, "text": text,
+            "transition_in": {"type": transition, "duration": tw,
+                              "direction": mom[1] if (mom and mom[0] == "x") else 1}, "text": text,
             "voice": voice, "sfx": sfx,
             "purpose": f"{beat['role']} · plano {shot} · movimento {move}",
         })
         t += dur
         last_img = img_i
+        mom = momentum_of(cam) or mom
 
     music = [m for m in spec["music"] if m not in set(music_avoid or [])] or spec["music"]
     profile = rng.choice(music)
@@ -286,7 +342,7 @@ def build_storyboard(brief: dict, cfg: dict, archetype: str, seed: int | None = 
         "strategy": {"archetype": archetype, "archetype_label": spec["label"], "pace": spec["pace"],
                      "hook_style": hook_style, "music_profile": profile, "style": spec["style"],
                      "seed": seed, "voice_requirement": "optional"},
-        "scenes": scenes, "voice_script": script, "notes": notes,
+        "scenes": scenes, "voice_script": script, "notes": notes, "continuity": continuity_stats(scenes),
     }
     brief["video_strategy"] = sb["strategy"]
     return sb
@@ -372,3 +428,63 @@ def retime(sb: dict, needs: dict[int, float], cfg: dict) -> tuple[dict, list[int
         dropped.append(worst["index"])
         needs.pop(worst["index"])
     raise PipelineError("Não foi possível encaixar a locução em 15–18 s mesmo cortando falas.")
+
+
+# ----------------------------------------------------------------------------
+# Corte na batida (beat-lock)
+# ----------------------------------------------------------------------------
+def beat_lock(sb: dict, cfg: dict, music_plan: dict, needs: dict[int, float] | None = None, tol: float = 0.10):
+    """Ajusta as durações para que TODA troca de cena (e o fim do vídeo) caia numa batida da trilha.
+
+    Trilha sintetizada: o andamento pode variar ±`tol` (10%) para achar a grade que menos desloca os cortes;
+    trilha de arquivo: só trava se o nome tiver o BPM (ex.: `premium_92bpm.mp3`), com a faixa começando no tempo 1.
+    Respeita: cena ≥ 1,2 s, tempo mínimo da narração (`needs`) e duração total 15–18 s.
+    Retorna (storyboard, info|None); None = não foi possível travar (o vídeo segue com cortes livres)."""
+    import math
+    base = music_plan.get("bpm")
+    if not base:
+        return sb, None
+    fps = sb["format"]["fps"]
+    dmin, dmax = cfg["duration"]["min"], cfg["duration"]["max"]
+    needs = needs or {}
+    scenes = sb["scenes"]
+    ends, acc = [], 0.0
+    for s in scenes:
+        acc += s["duration"]
+        ends.append(acc)
+    cands = [base * (1 + d / 200.0) for d in range(-int(tol * 200), int(tol * 200) + 1)] if music_plan.get("tunable") else [base]
+    best = None
+    for bpm in cands:
+        p = 60.0 / bpm
+        prev, plan = 0.0, []
+        for i, s in enumerate(scenes):
+            mind = max(1.2, needs.get(s["index"], 0.0))
+            k = max(round(ends[i] / p), math.ceil((prev + mind) / p - 1e-9))
+            bf = round(k * p * fps) / fps
+            while bf - prev < mind - 1e-9:
+                k += 1
+                bf = round(k * p * fps) / fps
+            plan.append((k, bf))
+            prev = bf
+        total = plan[-1][1]
+        if not (dmin + 0.05 <= total <= dmax - 0.05):
+            continue
+        cost = sum(abs(bf - ends[i]) for i, (k, bf) in enumerate(plan)) \
+            + 0.05 * sum(1 for k, _ in plan if k % 4) + 0.5 * abs(bpm - base) / base
+        if best is None or cost < best[0]:
+            best = (cost, bpm, plan)
+    if best is None:
+        return sb, None
+    _, bpm, plan = best
+    p = 60.0 / bpm
+    t = 0.0
+    for s, (k, bf) in zip(scenes, plan):
+        s["start"], s["duration"] = round(t, 3), round(bf - t, 3)
+        t = bf
+    sb["total_duration"] = round(t, 3)
+    err = max(abs(bf - k * p) for k, bf in plan)
+    info = {**{k_: v for k_, v in music_plan.items() if k_ != "tunable"}, "bpm": round(bpm, 2), "locked": True,
+            "max_error_ms": round(err * 1000, 1), "cut_beats": [k for k, _ in plan],
+            "on_downbeat": sum(1 for k, _ in plan if k % 4 == 0)}
+    sb["music"] = info
+    return sb, info

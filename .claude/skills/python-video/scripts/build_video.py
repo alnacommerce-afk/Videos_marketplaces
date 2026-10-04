@@ -21,7 +21,7 @@ import product_fetcher as pf
 from common import (FAILED, PROCESSING, QUEUED, READY, RENDERING, VALIDATING, JobStatus, Logger, PipelineError, iso,
                     load_archetypes, load_config, output_dir, save_json, slugify, work_dir)
 from renderer import Renderer
-from storyboard import build_storyboard, choose_archetype, retime, storyboard_summary
+from storyboard import beat_lock, build_storyboard, choose_archetype, retime, storyboard_summary
 from validator import validate
 
 
@@ -60,12 +60,13 @@ def plan_voice(sb: dict, cfg: dict, job_dir: Path, mode: str, log: Logger, allow
         clips[s["index"]] = arr
         needs[s["index"]] = (0.12 if s["role"] == "HOOK" else 0.25) + len(arr) / sr + 0.2
     sb, dropped = retime(sb, needs, cfg)
+    info_needs = {k: v for k, v in needs.items() if k not in dropped}
     for d in dropped:
         clips.pop(d, None)
         log.warn("fala removida para caber em 15–18 s", cena=d)
     for s in sb["scenes"]:
         s["voice_enabled"] = s["index"] in clips
-    return clips, {"voice": "ElevenLabs", "dropped": dropped}
+    return clips, {"voice": "ElevenLabs", "dropped": dropped, "needs": info_needs}
 
 
 def deliver(job_dir: Path, final_name: str, out_root: Path, day: str, log: Logger) -> Path:
@@ -118,6 +119,15 @@ def build_video(brief: dict, cfg: dict, job_id: str, day: str | None = None, arc
 
         clips, vinfo = plan_voice(sb, cfg, job_dir, voice_mode, log, allow_voice_change)
         sb["strategy"]["voice_requirement"] = "ElevenLabs" if clips else "sem narração"
+        # corte na batida: cada troca de cena cai num tempo forte da trilha
+        mplan = A.plan_music(sb, cfg, (seed or 0) + 11)
+        sb, lock = beat_lock(sb, cfg, mplan, vinfo.get("needs"))
+        if lock:
+            log.info("cortes travados na batida", bpm=lock["bpm"], erro_max_ms=lock["max_error_ms"], tempos_fortes=lock["on_downbeat"])
+        else:
+            sb["music"] = {**{k: v for k, v in mplan.items() if k != "tunable"}, "locked": False}
+            log.warn("cortes livres: trilha sem BPM conhecido (inclua '_92bpm' no nome do arquivo para travar na batida)"
+                     if mplan.get("source") == "arquivo" else "não foi possível travar os cortes na batida")
         save_json(job_dir / "storyboard.json", sb)
         (job_dir / "script.md").write_text(script_text(sb), encoding="utf-8")
         summary["script"] = [{"cena": s["index"], "texto": s["text"]["text"] if s["text"] else None,

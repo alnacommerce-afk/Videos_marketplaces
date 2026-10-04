@@ -98,7 +98,7 @@ def cover_zoom(fill: float, W: int, H: int, iw: int, ih: int) -> float:
 
 
 def plan_camera(shot: str, move: str, img_size: tuple[int, int], focals: list[dict], W: int, H: int,
-                rng: random.Random, start_from: dict | None = None) -> dict:
+                rng: random.Random, start_from: dict | None = None, direction: int | None = None) -> dict:
     """Devolve {fill, z0, z1, c0, c1, ease, parallax, shot, move}. Todos os valores são
     determinísticos dado (rng, entradas) — o storyboard guarda o resultado."""
     spec = SHOTS[shot]
@@ -122,7 +122,8 @@ def plan_camera(shot: str, move: str, img_size: tuple[int, int], focals: list[di
     c0 = [cx, cy]
     c1 = [cx, cy]
     grow = rng.uniform(1.10, 1.18)
-    direction = rng.choice([-1, 1])
+    rnd_dir = rng.choice([-1, 1])
+    direction = direction if direction in (-1, 1) else rnd_dir  # sentido herdado da cena anterior (continuidade)
     amp = 0.10
 
     if move == "push_in":
@@ -151,7 +152,7 @@ def plan_camera(shot: str, move: str, img_size: tuple[int, int], focals: list[di
         c0 = list(start_from["c1"])
         c1 = [c0[0] + dc[0], c0[1] + dc[1]]
     clamp = lambda v: round(min(max(v, 0.0), 1.0), 4)
-    return {"shot": shot, "move": move, "fill": fill, "z0": round(z0, 4), "z1": round(z1, 4),
+    return {"shot": shot, "move": move, "dir": direction, "fill": fill, "z0": round(z0, 4), "z1": round(z1, 4),
             "c0": [clamp(c0[0]), clamp(c0[1])], "c1": [clamp(c1[0]), clamp(c1[1])],
             "ease": "in_out", "parallax": bool(shot.startswith("hero") and rng.random() < 0.5)}
 

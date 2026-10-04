@@ -78,6 +78,19 @@ Opções úteis: `--voice auto|off|required` · `--format 9x16|4x5|1x1|16x9` · 
 - Instalar: `scripts\install_windows.ps1` (Python, FFmpeg, venv, dependências, teste e tarefa). Ou só a tarefa: `python scheduler.py install-task` (gera `config\ALNA-PythonVideo-Diario.xml`).
 - **Dependências físicas** (documentadas, não dá para garantir por software): o PC precisa estar **ligado ou em suspensão com "permitir temporizadores de ativação"**, com **o usuário logado** (bloqueio de tela é ok — a tarefa roda "somente quando o usuário está conectado" porque o `G:` do Google Drive é por usuário), com **Google Drive para computador aberto e sincronizando**, e com internet. PC desligado = sem vídeos.
 
+## Técnicas de estrutura (estilo "spec ad": ritmo, continuidade e som)
+
+Pensadas para fotos (sem filmagem) e para Reels / vídeo dos marketplaces. Todas têm checagem no quality gate.
+
+| Técnica | Como funciona aqui | Checagem |
+|---|---|---|
+| **Continuidade de movimento** (movement match) | A direção do pan/diagonal é herdada da cena anterior; entre os movimentos permitidos a cena prefere o que continua o impulso (eixo e sentido). Whip/motion/wipe saem no mesmo sentido em que a câmera vinha. Match cut (quando a mesma foto repete) retoma exatamente do enquadramento anterior. | `continuidade de movimento` (≤ 1 inversão de pan) |
+| **Ponte sonora** (J-cut) + **textura contínua** | Cada cena tem uma cama sonora discreta (ambiente grave nos planos abertos, "ar" nos detalhes, micro cliques no macro) que **entra 0,25 s antes do corte** e cruza com a anterior. O vídeo nunca fica em silêncio. | `pontes sonoras`, `áudio nunca em silêncio` |
+| **Corte na batida** (beat-lock) | Toda troca de cena e o fim do vídeo caem num tempo forte da trilha. Na trilha sintetizada o andamento varia até ±10% para achar a grade que menos desloca os cortes; o impacto/kick cai exatamente no corte. Respeita cena ≥ 1,2 s, a narração e 15–18 s. Em música sua, só trava se o nome tiver o BPM (`premium_92bpm.mp3`, faixa começando no tempo 1); sem BPM os cortes ficam livres e o log avisa. | `cortes na batida` (erro ≤ meio quadro) |
+| **Crescendo** | A trilha sintetizada começa mínima (pad) e acumula melodia → baixo → percussão; o ápice é o CTA. A curva de energia é monotônica e começa mais baixa em ritmo lento. Em música sua é uma rampa de volume (−4 dB → 0 dB). | `trilha cresce até o clímax` (≥ 3 dB, só na sintetizada) |
+
+Não implementado de propósito: relógios/time-remap com urgência (pode sugerir escassez que o produto não tem) e narrativa de identidade/"ritual" sem fatos de uso confirmados por escrito (item 7, aguardando decisão).
+
 ## Semana supervisionada (primeira semana de produção)
 
 Nos primeiros ~7 dias, assista aos vídeos e avalie cada um com `feedback.py` (nota 1–5 + comentário). O objetivo é descobrir o que o público-alvo aprova antes de automatizar mais (ex.: publicação). Perguntas guia: o gancho prendeu nos 2 primeiros segundos? O produto está claro e dominante? O texto está legível? A trilha combina? Você postaria? Depois da semana, `feedback.py summary` mostra quais arquétipos, músicas e ganchos funcionam, e ajustamos `archetypes.json`/`styles.json`.
@@ -123,7 +136,7 @@ Coloque faixas **licenciadas por você** em `music/` (guia em `music/README.md`)
 ## O que o diretor (você, Claude) deve fazer ao usar esta skill
 
 1. Leia o brief antes de decidir: quais fatos existem? O arquétipo é escolhido entre os **elegíveis** (ex.: `GIFT_ANGLE` só com fato de presente confirmado; `HOW_TO_USE` só com fato de uso).
-2. Gancho nos primeiros 2–3 s: mostre o produto ou um detalhe/pergunta neutra — nada de "Conheça nosso produto...". Estilos: `fact_hook`, `name_reveal`, `question`, `silent_macro`.
+2. Gancho nos primeiros 2–3 s (Reels e vídeos de marketplace são julgados nos primeiros segundos): mostre o produto ou um detalhe/pergunta neutra — nada de "Conheça nosso produto...". Estilos: `fact_hook`, `name_reveal`, `question`, `silent_macro`.
 3. Hard cut é o padrão; transição só com função narrativa (dissolve = passagem de tempo/calma, whip/motion = energia, zoom/match cut = continuidade, wipe = lista de itens, light sweep = premium).
 4. Texto curto: um por cena, produto sempre dominante. Não crie elemento gráfico para preencher espaço.
 5. Se um produto não tem fatos suficientes, **pule-o** e registre. Se faltar uma informação importante, **pergunte ao usuário** em vez de assumir.

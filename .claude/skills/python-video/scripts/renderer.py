@@ -221,7 +221,7 @@ class Renderer:
             acc += np.roll(a, s, axis=1)
         return Image.fromarray((acc / len(shifts)).astype("uint8"))
 
-    def transition(self, kind: str, A: Image.Image, B: Image.Image, p: float) -> Image.Image:
+    def transition(self, kind: str, A: Image.Image, B: Image.Image, p: float, direction: int = 1) -> Image.Image:
         W, H = self.W, self.H
         e = ease_in_out(p)
         if kind in ("dissolve", "cross_dissolve"):
@@ -233,14 +233,16 @@ class Renderer:
             return Image.blend(self._zoom(A, 1 + 0.45 * e), self._zoom(B, 1.45 - 0.45 * e), e)
         if kind in ("whip", "motion"):
             canvas = Image.new("RGB", (W, H))
-            off = int(W * e)
-            canvas.paste(A, (-off, 0))
-            canvas.paste(B, (W - off, 0))
+            off = int(W * e)  # direction=+1: a câmera segue para a direita (A sai pela esquerda); -1: o contrário
+            canvas.paste(A, (-direction * off, 0))
+            canvas.paste(B, (direction * (W - off), 0))
             return self._hblur(canvas, int((70 if kind == "whip" else 28) * np.sin(np.pi * p)))
         if kind == "directional_wipe":
             xs = np.arange(W, dtype=np.float32)[None, :]
             edge, soft = e * (W + 200) - 100, 90.0
             m = np.clip((edge - xs) / soft + 0.5, 0, 1)
+            if direction < 0:
+                m = m[:, ::-1]
             mask = Image.fromarray((np.repeat(m, H, axis=0) * 255).astype("uint8"), "L")
             return Image.composite(B, A, mask)
         if kind == "mask_reveal":
@@ -287,7 +289,7 @@ class Renderer:
                 p = (t - (sc[nxt]["start"] - tw)) / tw
                 A = self.scene_frame(j, tau)
                 B = self.scene_frame(nxt, t - (sc[nxt]["start"] - tw))
-                return self.transition(sc[nxt]["transition_in"]["type"], A, B, _clamp01(p))
+                return self.transition(sc[nxt]["transition_in"]["type"], A, B, _clamp01(p), sc[nxt]["transition_in"].get("direction", 1))
         return self.scene_frame(j, max(tau, 0.0))
 
     # -- render final -------------------------------------------------------------
