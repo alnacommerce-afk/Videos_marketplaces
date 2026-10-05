@@ -598,7 +598,7 @@ class TestBroll(unittest.TestCase):
         threading.Thread(target=cls.srv.serve_forever, daemon=True).start()
         cls.cfg = cfg_fast_fps()
         cls.cfg["store"]["min_delay_s"] = 0.0
-        cls.cfg["broll"].update({"enabled": True, "api_url": f"http://127.0.0.1:{cls.srv.server_port}/api/videos/", "min_delay_s": 0.0})
+        cls.cfg["broll"].update({"label_enabled": True, "enabled": True, "api_url": f"http://127.0.0.1:{cls.srv.server_port}/api/videos/", "min_delay_s": 0.0})
 
     @classmethod
     def tearDownClass(cls):
@@ -788,29 +788,29 @@ class TestBroll(unittest.TestCase):
         self.assertTrue(th["praia"]["kids"] and th["escola"]["kids"])
         self.assertFalse(th["decoracao"]["kids"])
 
-    def test_cta_is_one_line_with_store_address(self):
+    def test_legacy_cta_button_still_fits_the_safe_area(self):
         import graphics as g
         from common import fonts_dir, load_styles
         cfg = self.cfg
         fp, _ = g.find_font(cfg, fonts_dir(cfg), bold=True)
         fmt = next(iter(cfg["formats"].values()))
         ctx = {"W": 1080, "H": 1920, "safe": fmt["safe"], "font": fp, "style": load_styles()["bold"]}
-        lay = g.cta_button("Confira na loja ALNA", ctx, sub=cfg["brand"]["store_url_label"])
+        lay = g.cta_button("Confira na loja ALNA", ctx, sub="exemplo.com")
         x, y, w, h = lay.bbox
         sa = fmt["safe"]
         self.assertTrue(x >= sa["left"] and x + w <= 1080 - sa["right"] and y >= sa["top"] and y + h <= 1920 - sa["bottom"], "dentro da safe area")
         self.assertGreaterEqual(lay.font_px, 44)
         single = g.cta_button("Confira na loja ALNA", ctx)
         self.assertGreater(h, single.bbox[3], "endereço da loja entra sob o botão")
-        self.assertEqual(cfg["brand"]["store_url_label"], "store.alna.sale")
+        self.assertTrue(cfg["brand"]["marketplace_safe"], "padrão: sem chamada para fora (marketplaces punem)")
 
     def test_connect_trust_archetype_hooks_with_a_message(self):
         brief, use = self._brief_with_clip()
         sb = SB.build_storyboard(brief, self.cfg, "CONNECT_TRUST", seed=3)
         first = sb["scenes"][0]
         self.assertTrue(first["text"] and first["text"]["t_in"] <= 1.2, "gancho com mensagem logo no começo")
-        self.assertEqual(sb["scenes"][-1]["text"]["role"], "cta")
-        self.assertEqual(sb["scenes"][-1]["text"]["sub"], "store.alna.sale")
+        self.assertEqual(sb["scenes"][-1]["text"]["role"], "closing", "marketplace_safe: fecha com o nome do produto, sem chamada")
+        self.assertNotIn("sub", sb["scenes"][-1]["text"])
 
     def _brief_with_clips(self, n=3):
         brief, use = self._brief_with_clip()
@@ -825,7 +825,7 @@ class TestBroll(unittest.TestCase):
         demo["broll"].update({"demo": True, "max_per_video": 3})
         sb = SB.build_storyboard(brief, demo, "DEMO_MIX", seed=2)
         roles = ["clip" if s.get("clip") else "foto" for s in sb["scenes"]]
-        self.assertEqual(roles, ["clip", "foto", "foto", "clip", "foto", "clip", "foto"])
+        self.assertEqual(roles, ["clip", "clip", "clip", "foto", "foto", "foto", "foto"])
         texts = [s["text"] for s in sb["scenes"] if s.get("clip")]
         self.assertEqual(sum(1 for x in texts if x), 1, "só um clipe leva o texto do fato de uso; os outros ficam sem texto")
         self.assertTrue(all(s["illustrative"] for s in sb["scenes"] if s.get("clip")))
@@ -842,7 +842,7 @@ class TestBroll(unittest.TestCase):
             self.skipTest("renderiza vídeo")
         brief, use = self._brief_with_clips(3)
         cfg = copy.deepcopy(self.cfg)
-        cfg["broll"].update({"demo": True, "max_per_video": 3})
+        cfg["broll"].update({"demo": True, "max_per_video": 3, "label_enabled": False})  # padrão do dono: sem o selo
         res = build_video(brief, cfg, "demo-e2e", day="2026-07-02", archetype="DEMO_MIX", seed=3, voice_mode="off",
                           out_root=TMP / "out-demo")
         self.assertEqual(res["status"], "READY", res)
@@ -854,7 +854,12 @@ class TestBroll(unittest.TestCase):
         self.assertTrue(sb["strategy"]["demo"])
         rr = load_json(job / "render_report.json")
         labels = [l for sc in rr["scenes"] for l in sc["layers"] if l["role"] == "badge"]
-        self.assertEqual(len(labels), 3, "rótulo 'Imagem ilustrativa' em cada cena de clipe")
+        self.assertEqual(len(labels), 0, "selo desligado a pedido do dono: nenhum rótulo na imagem")
+        self.assertFalse(load_config()["broll"]["label_enabled"], "padrão do projeto: sem selo")
+        variants = {s["text"]["variant"] for s in sb["scenes"] if s.get("text") and s["text"].get("variant")}
+        self.assertGreaterEqual(len(variants), 3, f"variedade de modelos de texto: {variants}")
+        self.assertEqual(sb["scenes"][-1]["text"]["role"], "closing")
+        self.assertTrue(all("loja" not in (s["text"]["text"].lower()) for s in sb["scenes"] if s.get("text")))
         # o gate continua barrando clipe sem fato de uso que o justifique
         bf = load_json(job / "brief.json")
         sb2 = copy.deepcopy(sb)
@@ -989,6 +994,19 @@ class TestSecrets(unittest.TestCase):
         self.assertEqual((st["host"], st["port"], st["password"], st["to"]), ("smtp.gmail.com", 587, "abcdefghijklmnop", "asm.express.logistica@gmail.com"))
         self.assertIsNone(notify.email_settings(TMP / "vazio"))
 
+    def test_reference_analyzer_measures_cuts_and_makes_a_sheet(self):
+        import subprocess
+        import analisar_referencia as AR
+        from common import which_tool
+        src = TMP / "ref.mp4"
+        subprocess.run([which_tool("ffmpeg"), "-v", "error", "-y", "-f", "lavfi", "-i", "color=c=red:s=180x320:d=2", "-f", "lavfi", "-i", "color=c=blue:s=180x320:d=1",
+                        "-f", "lavfi", "-i", "color=c=green:s=180x320:d=3", "-f", "lavfi", "-i", "sine=f=440:d=6", "-filter_complex", "[0][1][2]concat=n=3:v=1:a=0[v]",
+                        "-map", "[v]", "-map", "3:a", "-shortest", str(src)], check=True)
+        res = AR.analyze(src, TMP / "ref_out")
+        self.assertEqual(res["cortes"], 2)
+        self.assertAlmostEqual(res["primeiro_corte_s"], 2.0, places=1)
+        self.assertTrue((TMP / "ref_out" / "prancha.jpg").exists())
+
     def test_no_secret_in_project_files(self):
         """Falha se uma chave (Pixabay/ElevenLabs/service_role) aparecer em qualquer arquivo versionável da skill."""
         from common import SKILL_DIR
@@ -1041,7 +1059,7 @@ class TestStoryboard(unittest.TestCase):
                 self.assertEqual(len(used), len(set(used)), "mesmo fato não repete no vídeo")
                 self.assertTrue(15 <= sb["total_duration"] <= 18, sb["total_duration"])
                 self.assertAlmostEqual(sum(s["duration"] for s in sb["scenes"]), sb["total_duration"], places=2)
-                self.assertEqual(sb["scenes"][-1]["text"]["role"], "cta")
+                self.assertEqual(sb["scenes"][-1]["text"]["role"], "closing")
 
     def test_risky_facts_never_used(self):
         b3 = self.briefs[2]

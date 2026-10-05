@@ -13,11 +13,13 @@ from __future__ import annotations
 import argparse
 import json
 import random
+import re
 import sys
 from pathlib import Path
 
 from PIL import Image
 
+import textkit
 from camera import focal_candidates, plan_camera
 from common import (PipelineError, format_spec, iso, load_archetypes, load_config, load_json, save_json)
 
@@ -104,6 +106,14 @@ def expected_text(source: str, brief: dict, cfg: dict) -> str | None:
     if kind == "label":
         return KIND_LABEL.get(arg)
     return None
+
+
+# Marketplaces punem chamadas para fora (loja, link, site, redes). Em modo marketplace_safe nenhum texto do vídeo pode tê-las.
+EXTERNAL_PATTERN = re.compile(r"\b(loja|link|compre|compra|clique|acesse|site|www|bio|whats\w*|instagram|chama no|confira)\b|\.com|\.sale|https?:", re.I)
+
+
+def is_external(text: str) -> bool:
+    return bool(EXTERNAL_PATTERN.search(text or ""))
 
 
 def _cta_options(cfg: dict) -> list[str]:
@@ -243,7 +253,9 @@ def build_storyboard(brief: dict, cfg: dict, archetype: str, seed: int | None = 
     pace_total = {"fast": dcfg["min"] + 0.5, "medium": dcfg["target"], "slow": dcfg["max"] - 0.5}[spec["pace"]]
     total = round(min(max(pace_total + rng.uniform(-0.3, 0.3), dcfg["min"] + 0.2), dcfg["max"] - 0.2), 2)
     # b-roll: só entra se há clipe baixado cujo tema é justificado por um fato de USO confirmado e exibível
-    use_ok = {f["id"] for f in brief["confirmed_facts"] if f["usable"] and f["kind"] == "use" and f["display"]}
+    safe_mode = bool(cfg["brand"].get("marketplace_safe"))
+    use_ok = {f["id"] for f in brief["confirmed_facts"] if f["usable"] and f["kind"] == "use" and f["display"]
+              and not (safe_mode and is_external(f["display"]))}
     broll_items = [b for b in (brief.get("broll") or []) if b["fact_id"] in use_ok][: cfg.get("broll", {}).get("max_per_video", 1)]
     beats, n_amb = [], 0
     for b in spec["beats"]:
@@ -264,6 +276,10 @@ def build_storyboard(brief: dict, cfg: dict, archetype: str, seed: int | None = 
             sizes.append(pil.size)
             focals.append(focal_candidates(pil, 4))
     pool = FactPool(brief, rng)
+    if safe_mode:
+        pool.items = [f for f in pool.items if not is_external(f["display"])]
+    vrng = random.Random((seed if seed is not None else 1) ^ 0x7E57)  # sorteio separado: não altera o resto do storyboard
+    last_variant = None
     for it in broll_items[:n_amb]:
         pool.used.add(it["fact_id"])  # o fato de uso fica reservado para a cena do clipe (não repete em outra cena)
     clip_i = 0
@@ -292,7 +308,9 @@ def build_storyboard(brief: dict, cfg: dict, archetype: str, seed: int | None = 
             if beat.get("text", "fact:use") != "none" and fct["id"] not in claimed:
                 claimed.add(fct["id"])
                 txt = {"source": f"fact:{fct['id']}", "role": "fact", "text": fct["display"], "anim": beat.get("anim", "words"),
-                       "t_in": 0.3, "position": "bottom"}
+                       "t_in": 0.3, "position": "bottom",
+                       "variant": textkit.pick_variant("fact", tr, last_variant, vrng)}
+                last_variant = txt["variant"]
                 if expected_text(txt["source"], brief, cfg) != txt["text"]:
                     raise PipelineError(f"Texto da cena {i + 1} não bate com a fonte {txt['source']}")
             csfx = []
@@ -362,14 +380,20 @@ def build_storyboard(brief: dict, cfg: dict, archetype: str, seed: int | None = 
             else:
                 notes.append(f"cena {i + 1} ({beat['role']}): sem fato confirmado disponível, ficou sem texto")
         elif kind == "cta":
-            text = {"source": f"cta:{cta_idx}", "role": "cta", "text": _cta_options(cfg)[cta_idx]}
+            if safe_mode:  # marketplace: sem chamada para fora; o fechamento é o nome do produto
+                text = {"source": "name", "role": "closing", "text": brief["product"]["name"]}
+            else:
+                text = {"source": f"cta:{cta_idx}", "role": "cta", "text": _cta_options(cfg)[cta_idx]}
         if text:
             exp = expected_text(text["source"], brief, cfg)
             if exp != text["text"]:
                 raise PipelineError(f"Texto da cena {i + 1} não bate com a fonte {text['source']}")
             text["anim"] = beat.get("anim", "fade")
             text["t_in"] = 0.25 if beat["role"] != "HOOK" else 0.12
-            text["position"] = {"headline": "top", "name": "bottom", "fact": "bottom", "card": "bottom", "cta": "bottom"}[text["role"]]
+            text["position"] = {"headline": "top", "name": "bottom", "fact": "bottom", "card": "bottom", "cta": "bottom", "closing": "bottom"}[text["role"]]
+            if text["role"] in ("headline", "fact", "name", "closing"):  # modelo de caixa/fonte conforme a transição da cena
+                text["variant"] = textkit.pick_variant(text["role"], transition, last_variant, vrng)
+                last_variant = text["variant"]
             if text["role"] == "cta":
                 text["t_in"] = 0.35
                 if cfg["brand"].get("store_url_label"):

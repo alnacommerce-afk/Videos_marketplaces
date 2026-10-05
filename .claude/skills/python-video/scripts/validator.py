@@ -189,7 +189,7 @@ def validate(mp4: Path, sb: dict, brief: dict, cfg: dict, render_report: dict | 
                 problems.append(f"cena {s['index']}: origem do clipe não registrada")
             labels = [ly for sc in (render_report or {}).get("scenes", []) if sc["scene"] == s["index"] for ly in sc["layers"]
                       if ly["role"] == "badge" and ly["text"] == bcfg.get("label", "Imagem ilustrativa")]
-            if render_report is not None and not labels:
+            if render_report is not None and bcfg.get("label_enabled", True) and not labels:
                 label_missing.append(f"cena {s['index']}")
             if (cl.get("duration") or 0) < s["duration"] + s["transition_in"]["duration"] + 0.3:
                 short.append(f"cena {s['index']}: clipe {cl.get('duration')}s")
@@ -206,14 +206,23 @@ def validate(mp4: Path, sb: dict, brief: dict, cfg: dict, render_report: dict | 
         c.add("b-roll: clipe longo o bastante para a cena (sem congelar)", not short, "; ".join(short)[:200], severity="warn")
 
     last = sb["scenes"][-1]
-    cta_ok = bool(last.get("text")) and last["text"]["role"] == "cta" and (last["duration"] - last["text"]["t_in"]) >= 1.2
-    c.add("CTA presente e visível ≥ 1,2 s no final", cta_ok)
+    safe_mode = bool(cfg["brand"].get("marketplace_safe"))
+    want = "closing" if safe_mode else "cta"
+    cta_ok = bool(last.get("text")) and last["text"]["role"] == want and (last["duration"] - last["text"]["t_in"]) >= 1.2
+    c.add("fechamento (nome do produto) visível ≥ 1,2 s no final" if safe_mode else "CTA presente e visível ≥ 1,2 s no final", cta_ok)
+    if safe_mode:  # marketplaces punem chamadas para fora
+        from storyboard import is_external
+        ext = [f"cena {s['index']}: '{s['text']['text']}'" for s in sb["scenes"] if s.get("text") and is_external(s["text"]["text"])]
+        c.add("sem chamada para fora (loja/link/site) — seguro para marketplace", not ext, "; ".join(ext)[:300])
+    kinds = {s["text"].get("variant") for s in sb["scenes"] if s.get("text") and s["text"].get("variant")}
+    c.add("variedade tipográfica (≥ 3 modelos de texto no vídeo)", len(kinds) >= 3, ", ".join(sorted(kinds)), severity="warn")
     first = sb["scenes"][0]
     # leitura "de relance" (DOOH/Reels): mensagem curta logo no começo e uma única ação curta no fim
     ftx = first.get("text")
     c.add("gancho: mensagem legível em ≤ 1,2 s e ≤ 7 palavras", bool(ftx) and ftx["t_in"] <= 1.2 and len(ftx["text"].split()) <= 7,
           (f"{len(ftx['text'].split())} palavras, entra em {ftx['t_in']}s" if ftx else "cena 1 sem texto"), severity="warn")
-    c.add("CTA curta (≤ 5 palavras)", len((last.get("text") or {}).get("text", "").split()) <= 5, severity="warn")
+    if not safe_mode:
+        c.add("CTA curta (≤ 5 palavras)", len((last.get("text") or {}).get("text", "").split()) <= 5, severity="warn")
     c.add("gancho nos primeiros 2,5 s (cena 1 curta)", first["duration"] <= 3.2, f"{first['duration']:.2f}s", severity="warn")
 
     if audio_report:

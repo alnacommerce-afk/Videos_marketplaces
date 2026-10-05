@@ -104,6 +104,16 @@ Pensadas para fotos (sem filmagem) e para Reels / vídeo dos marketplaces. Todas
 
 Não implementado de propósito: relógios/time-remap com urgência (pode sugerir escassez que o produto não tem) e narrativa de identidade/"ritual" sem fatos de uso confirmados por escrito (item 7, aguardando decisão).
 
+## Marketplace-safe, tipografia e história (v10)
+
+* `brand.marketplace_safe` (padrão `true`): **nenhum texto com chamada para fora** (loja/link/site/redes; o validador reprova) e o vídeo **fecha com o nome do produto** (`role closing`), sem "Confira na loja". Para voltar ao CTA antigo: `false`.
+* `broll.label_enabled` (padrão `false`): sem o selo "Imagem ilustrativa" na tela (a origem continua em `creditos.txt`). `true` religa o selo.
+* `broll.fill_mode` (`cover_pan`): clipes horizontais preenchem o 9:16 (corte + deslize lento) em vez de faixa com fundo borrado. `letterbox` volta ao antigo.
+* Fotos que não preenchem o quadro: degradê largo (190 px, smoothstep) entre a foto e o fundo.
+* **Kit tipográfico** (`scripts/textkit.py`): 7 modelos (marcador, serifa itálica, contorno black, fita inclinada, mono, itálico com caixa, texto riscado) + as barras clássicas; escolhido pela transição da cena, sem repetir; palavra-chave destacada. Fontes: `fonts/` e Windows (Georgia, Arial Black, Impact, Segoe UI, Consolas); sem elas, usa a principal (itálico simulado). Aviso do gate se o vídeo tiver < 3 modelos.
+* **História em 3 atos** (`DEMO_MIX`): usos reais (clipes) → produto → prova → fechamento. Ver `references/marketing-playbook.md`.
+* **Estudar referências:** `python scripts\analisar_referencia.py C:\ALNA\referencias` mede cortes, gancho e som e gera `prancha.jpg` (só arquivos locais).
+
 ## Persuasão e estrutura (conexão → credibilidade → confiança → ação)
 
 Objetivo de cada vídeo: **conexão, credibilidade e confiança**, terminando em **uma única ação**. Princípios (mídia digital exterior + Reels/TikTok):

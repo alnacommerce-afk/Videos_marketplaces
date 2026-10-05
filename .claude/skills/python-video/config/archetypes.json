@@ -1186,7 +1186,7 @@
       ]
     },
     "DEMO_MIX": {
-      "label": "Demo conexão e confiança (foto + clipes)",
+      "label": "História em 3 atos (usos reais -> produto -> fechamento)",
       "pace": "medium",
       "music": [
         "MODERN",
@@ -1198,27 +1198,55 @@
         "min_broll": 2,
         "min_facts": 2
       },
-      "_doc": "Só entra no modo --demo (precisa de >= 2 clipes). Alterna clipe de ambiente e foto real do produto.",
+      "_doc": "Storytelling com fatos confirmados: ATO 1 = momentos de uso (clipes ilustrativos), ATO 2 = o produto que reúne esses momentos, ATO 3 = prova (fatos) e fechamento com o nome. Só no --demo (>= 2 clipes).",
       "beats": [
         {
-          "role": "HOOK",
+          "role": "ATO1_USO",
           "shot": "broll",
           "move": [
             "static"
           ],
-          "w": 2.2,
+          "w": 2.4,
           "text": "fact:use",
           "optional": "broll",
           "anim": "words",
           "sfx": "swipe"
         },
         {
-          "role": "PRODUCT_REVEAL",
+          "role": "ATO1_USO_2",
+          "shot": "broll",
+          "move": [
+            "static"
+          ],
+          "w": 2.4,
+          "text": "fact:use",
+          "optional": "broll",
+          "anim": "words",
+          "transition": "dissolve",
+          "tw": 0.4,
+          "sfx": "swipe"
+        },
+        {
+          "role": "ATO1_USO_3",
+          "shot": "broll",
+          "move": [
+            "static"
+          ],
+          "w": 2.4,
+          "text": "fact:use",
+          "optional": "broll",
+          "anim": "words",
+          "transition": "dissolve",
+          "tw": 0.4,
+          "sfx": "swipe"
+        },
+        {
+          "role": "ATO2_PRODUTO",
           "shot": "hero_wide",
           "move": [
             "pull_out"
           ],
-          "w": 2.4,
+          "w": 2.6,
           "text": "name",
           "anim": "mask",
           "transition": "whip",
@@ -1226,32 +1254,19 @@
           "sfx": "whoosh"
         },
         {
-          "role": "DETAIL",
+          "role": "ATO3_PROVA",
           "shot": "detail",
           "move": [
             "push_in",
             "diagonal"
           ],
-          "w": 2.6,
+          "w": 2.5,
           "text": "fact",
           "anim": "slide",
           "sfx": "click"
         },
         {
-          "role": "USE",
-          "shot": "broll",
-          "move": [
-            "static"
-          ],
-          "w": 2.6,
-          "text": "fact:use",
-          "optional": "broll",
-          "anim": "words",
-          "transition": "dissolve",
-          "tw": 0.4
-        },
-        {
-          "role": "DETAIL_2",
+          "role": "ATO3_PROVA_2",
           "shot": "detail2",
           "move": [
             "pan_h",
@@ -1265,25 +1280,12 @@
           "sfx": "swipe"
         },
         {
-          "role": "AMBIENT",
-          "shot": "broll",
-          "move": [
-            "static"
-          ],
-          "w": 2.2,
-          "text": "none",
-          "optional": "broll",
-          "transition": "whip",
-          "tw": 0.3,
-          "sfx": "whoosh"
-        },
-        {
-          "role": "CTA",
+          "role": "FECHAMENTO",
           "shot": "hero",
           "move": [
             "push_in"
           ],
-          "w": 2.6,
+          "w": 2.8,
           "text": "cta",
           "anim": "scale",
           "sfx": "pop"

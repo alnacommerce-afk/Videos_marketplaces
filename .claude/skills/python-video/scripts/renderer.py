@@ -13,6 +13,7 @@ import numpy as np
 from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageOps
 
 import graphics as g
+import textkit
 from camera import ease_in_out, view_box
 from common import Logger, PipelineError, ffprobe_json, fonts_dir, load_styles, run, save_json, which_tool
 
@@ -28,8 +29,9 @@ class ClipSource:
     Vertical: preenche o quadro. Horizontal 4K: recorta um vertical nítido do centro. Horizontal menor: clipe centralizado
     sobre uma cópia desfocada (evita ampliar demais e ficar mole). O áudio do clipe é ignorado."""
 
-    def __init__(self, path: str, W: int, H: int, fps: int, start: float = 0.4):
+    def __init__(self, path: str, W: int, H: int, fps: int, start: float = 0.4, pan_dur: float = 3.0, fill: str = "cover_pan"):
         self.path, self.W, self.H, self.fps, self.start = path, W, H, fps, start
+        self.pan_dur, self.fill = max(pan_dur, 1.0), fill
         info = ffprobe_json(path)
         v = next(s for s in info["streams"] if s["codec_type"] == "video")
         self.w, self.h = int(v["width"]), int(v["height"])
@@ -40,6 +42,11 @@ class ClipSource:
         W, H, fps = self.W, self.H, self.fps
         if self.h >= self.w:
             return f"fps={fps},scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H}"
+        if self.fill != "letterbox":
+            # PREENCHE o 9:16: ajusta pela altura e desliza a janela de corte pelo clipe (movimento + sem faixas)
+            sharp = ",unsharp=3:3:0.5" if self.h < H else ""
+            return (f"fps={fps},scale=-2:{H}:flags=lanczos,"
+                    f"crop={W}:{H}:x='(iw-{W})*(0.30+0.40*min(t/{self.pan_dur:.2f},1))':y=0{sharp}")
         if self.w >= 3000:
             return f"fps={fps},crop=ih*{W}/{H}:ih,scale={W}:{H}"
         return (f"fps={fps},split[a][b];[a]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
@@ -99,6 +106,7 @@ class Renderer:
         self.style = load_styles()[sb["strategy"]["style"]]
         self.font_path, self.font_family = g.find_font(cfg, fonts_dir(cfg), bold=True)
         self.ctx = {"W": self.W, "H": self.H, "safe": self.safe, "font": self.font_path, "style": self.style}
+        self.kit = textkit.kit_fonts(cfg, fonts_dir(cfg), self.font_path)
         self.shade = g.gradient_overlay(self.W, self.H, bottom=self.style["grad_bottom"], top=0.16,
                                         dim=0.0, vignette=self.style["vignette"])
         self._photos: dict[str, Image.Image] = {}
@@ -145,16 +153,17 @@ class Renderer:
             self._bgs[j] = bg
         return self._bgs[j]
 
-    def _feather(self, dest: tuple, edge: int = 34) -> Image.Image | None:
+    def _feather(self, dest: tuple, edge: int = 190) -> Image.Image | None:
         """Máscara com bordas suaves nos lados da foto que NÃO encostam na borda do quadro."""
         dx, dy, dw, dh = dest
         sides = (dx > 1, dx + dw < self.W - 1, dy > 1, dy + dh < self.H - 1)  # esq, dir, topo, base
         if not any(sides):
             return None
-        e = min(edge, dw // 3, dh // 3)
+        e = max(2, min(edge, dw // 4, dh // 4))  # degradê largo: a foto se dissolve no fundo (sem faixa dura)
         x = np.ones(dw, dtype=np.float32)
         y = np.ones(dh, dtype=np.float32)
         ramp = np.linspace(0, 1, e, dtype=np.float32)
+        ramp = ramp * ramp * (3 - 2 * ramp)  # smoothstep
         if sides[0]:
             x[:e] = ramp
         if sides[1]:
@@ -171,7 +180,9 @@ class Renderer:
 
     def _clip(self, j: int) -> ClipSource:
         if j not in self._clips:
-            self._clips[j] = ClipSource(self.scenes[j]["clip"]["path"], self.W, self.H, self.fps)
+            sc = self.scenes[j]
+            self._clips[j] = ClipSource(sc["clip"]["path"], self.W, self.H, self.fps,
+                                        pan_dur=sc["duration"] + self._tw(j), fill=self.cfg.get("broll", {}).get("fill_mode", "cover_pan"))
         return self._clips[j]
 
     def photo_frame(self, j: int, tau: float, peek: bool = False) -> Image.Image:
@@ -219,12 +230,21 @@ class Renderer:
             from storyboard import KIND_LABEL
             label = KIND_LABEL.get(tx["label"].split(":", 1)[1])
         odd = sc["index"] % 2 == 1
+        var = tx.get("variant")
+        if var and var in textkit.VARIANTS and role in ("headline", "fact", "name", "closing"):
+            pos = {"headline": "top", "fact": "bottom", "name": "bottom", "closing": "bottom"}[role]
+            size = {"headline": 96, "fact": 78, "name": 92, "closing": 100}[role]
+            return textkit.styled_layer(text, var, role, ctx, self.kit, position=pos, size=size, t_in=t_in,
+                                        extra_up={"fact": 220, "closing": 160}.get(role, 120))
+        if role == "closing":
+            return g.text_card(text, ctx, "bottom", size=96, max_lines=3, align="center", anim=anim, t_in=t_in, role="closing")
         if role == "headline":
             return g.text_card(text, ctx, "top", anim=anim, t_in=t_in)
         if role == "name":
             return g.text_card(text, ctx, "bottom", size=92, max_lines=3, align="left", anim=anim, t_in=t_in, role="name")
         if role == "fact":
-            return g.lower_third(text, ctx, anim="slide" if anim not in ("fade", "mask") else anim, t_in=t_in) if odd \
+            bar = (var == "classic_bar") if var in textkit.CLASSIC else odd
+            return g.lower_third(text, ctx, anim="slide" if anim not in ("fade", "mask") else anim, t_in=t_in) if bar \
                 else g.product_callout(text, ctx, anim="scale" if anim == "slide" else anim, t_in=t_in)
         if role == "card":
             return (g.benefit_card if odd else g.feature_card)(text, label, ctx, anim=anim if anim in ("slide", "fade", "scale", "mask") else "slide", t_in=t_in)
@@ -272,7 +292,7 @@ class Renderer:
             main = self._make_layer(j, sc)
             if main:
                 layers.append(main)
-            if sc.get("illustrative"):  # cena de b-roll: rótulo obrigatório
+            if sc.get("illustrative") and self.cfg.get("broll", {}).get("label_enabled", True):  # rótulo (desligável pelo dono)
                 layers.append(g.badge(self.cfg["broll"]["label"], self.ctx, "top", "fade", 0.1))
             entry = {"scene": sc["index"], "layers": []}
             for layer in layers:
