@@ -173,6 +173,15 @@ Cada vídeo novo gasta crédito: há cache por roteiro e teto diário (`max_new_
 
 **Efeitos ElevenLabs:** `python scripts\elevenlabs_sfx.py generate` cria `sfx\*.mp3` (6 efeitos, uma chamada cada, uma vez); o pipeline usa o arquivo quando existe e o som sintetizado quando não. Música gerada pelo ElevenLabs **não** é usada: exige licença adicional para anúncios (conferir o plano antes).
 
+## Orçamento (fazer mais com menos custo)
+
+Regra do dono: as APIs são ferramentas para usar com **orçamento limitado**. Política:
+* **ElevenLabs narração:** modelo `eleven_flash_v2_5` (mais barato, ~metade do crédito por caractere; confirme no seu plano), no máx. 2 falas e 90 caracteres por vídeo, 400 caracteres/dia e 8000/mês (`elevenlabs.budget`). Cache por texto: fala repetida não paga de novo. Quando a embaixadora fala, **não** há narração por cima.
+* **ElevenLabs efeitos:** biblioteca gerada uma vez (6 efeitos) e reutilizada para sempre. Música gerada: não usamos.
+* **HeyGen:** só a abertura (3–5 s), cache por roteiro, no máx. 3 vídeos novos/dia (`presenter.max_new_videos_per_day`). Uma boa prática de custo: reutilizar a mesma abertura em vários produtos (roteiros repetidos não gastam).
+* **Pixabay:** grátis; cache de 24 h.
+* O Claude nunca chama API paga sem o dono pedir; testes na nuvem usam servidor simulado.
+
 ## Atualizar pelo git e sessão local
 
 * `scripts\atualizar.ps1` clona/atualiza o repositório em `C:\ALNA\_repo` e copia só a pasta da skill para `C:\ALNA\python-video`, preservando `.venv`, `work`, `cache`, `output`, `teste`, `logs`, `API\`, `APIpixabay*` e `voice.lock.json`.

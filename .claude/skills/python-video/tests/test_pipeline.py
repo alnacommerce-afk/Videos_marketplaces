@@ -1165,6 +1165,23 @@ class TestAudio(unittest.TestCase):
             os.environ.update(env)
 
 
+class TestVoiceBudget(unittest.TestCase):
+    def test_budget_blocks_before_spending_and_counts_only_new_chars(self):
+        cache = TMP / "cache_budget"
+        shutil.rmtree(cache, ignore_errors=True)
+        cfg = copy.deepcopy(load_config())
+        cfg["elevenlabs"]["budget"] = {"max_chars_per_day": 50, "max_chars_per_month": 80}
+        A.voice_budget_check(cfg, cache, 40)          # cabe
+        A.voice_budget_add(cache, 40)
+        with self.assertRaises(A.VoiceBudgetExceeded):
+            A.voice_budget_check(cfg, cache, 20)      # estouraria o teto diário (40+20 > 50)
+        cfg["elevenlabs"]["budget"] = {"max_chars_per_day": 500, "max_chars_per_month": 60}
+        with self.assertRaises(A.VoiceBudgetExceeded):
+            A.voice_budget_check(cfg, cache, 30)      # estouraria o mensal
+        self.assertEqual(load_config()["elevenlabs"]["model_id"], "eleven_flash_v2_5", "modelo mais barato por padrão")
+        self.assertLessEqual(load_config()["elevenlabs"]["budget"]["max_chars_per_video"], 120)
+
+
 class TestGraphics(unittest.TestCase):
     def test_fonts_and_contrast(self):
         import graphics as g

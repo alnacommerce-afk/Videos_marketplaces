@@ -12,6 +12,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import time
 import re
 import wave
 from pathlib import Path
@@ -104,6 +105,37 @@ def enforce_voice_lock(voice_id: str, allow_change: bool = False) -> None:
         save_json(lock, {"voice_id": voice_id, "locked_at": iso()})
 
 
+class VoiceBudgetExceeded(PipelineError):
+    pass
+
+
+def _ledger_file(cache: Path) -> Path:
+    return cache / "tts" / "uso.json"
+
+
+def _ledger_load(cache: Path) -> dict:
+    return load_json(_ledger_file(cache), {}) or {}
+
+
+def voice_budget_check(cfg: dict, cache: Path, chars: int) -> None:
+    """Orçamento de caracteres (o ElevenLabs cobra por caractere): teto por dia e por mês. Só conta o que NÃO veio do cache."""
+    b = cfg["elevenlabs"].get("budget") or {}
+    led = _ledger_load(cache)
+    day, month = time.strftime("%Y-%m-%d"), time.strftime("%Y-%m")
+    if b.get("max_chars_per_day") and led.get(day, 0) + chars > b["max_chars_per_day"]:
+        raise VoiceBudgetExceeded(f"teto diário de narração atingido ({led.get(day, 0)}+{chars} > {b['max_chars_per_day']} caracteres)")
+    if b.get("max_chars_per_month") and led.get(month, 0) + chars > b["max_chars_per_month"]:
+        raise VoiceBudgetExceeded(f"teto mensal de narração atingido ({led.get(month, 0)}+{chars} > {b['max_chars_per_month']} caracteres)")
+
+
+def voice_budget_add(cache: Path, chars: int) -> None:
+    led = _ledger_load(cache)
+    for k in (time.strftime("%Y-%m-%d"), time.strftime("%Y-%m")):
+        led[k] = led.get(k, 0) + chars
+    _ledger_file(cache).parent.mkdir(parents=True, exist_ok=True)
+    save_json(_ledger_file(cache), led)
+
+
 def tts_elevenlabs(text: str, cfg: dict, cache: Path, logger: Logger, allow_voice_change: bool = False) -> Path:
     """Gera (ou reaproveita do cache) a locução em MP3. Retorna o caminho."""
     import requests
@@ -115,6 +147,7 @@ def tts_elevenlabs(text: str, cfg: dict, cache: Path, logger: Logger, allow_voic
     out = cache / "tts" / f"{h}.mp3"
     if out.exists() and out.stat().st_size > 1000:
         return out
+    voice_budget_check(cfg, cache, len(spoken))  # antes de gastar
     out.parent.mkdir(parents=True, exist_ok=True)
     body = {"text": spoken, "model_id": e["model_id"],
             "voice_settings": {"stability": e["stability"], "similarity_boost": e["similarity_boost"], "style": e["style"]}}
@@ -127,6 +160,7 @@ def tts_elevenlabs(text: str, cfg: dict, cache: Path, logger: Logger, allow_voic
     tmp = out.with_suffix(".part")
     tmp.write_bytes(r.content)
     os.replace(tmp, out)
+    voice_budget_add(cache, len(spoken))
     logger.info("locução gerada", chars=len(spoken), voz=vid[:6] + "…")
     return out
 

@@ -149,12 +149,18 @@
   "elevenlabs": {
     "api_key_env": "ELEVENLABS_API_KEY",
     "voice_id_env": "ELEVENLABS_VOICE_ID",
-    "model_id": "eleven_multilingual_v2",
+    "model_id": "eleven_flash_v2_5",
     "language_code": "pt",
     "stability": 0.5,
     "similarity_boost": 0.8,
     "style": 0.2,
-    "output_format": "mp3_44100_128"
+    "output_format": "mp3_44100_128",
+    "budget": {
+      "max_scenes_per_video": 2,
+      "max_chars_per_video": 90,
+      "max_chars_per_day": 400,
+      "max_chars_per_month": 8000
+    }
   },
   "encode": {
     "crf": 18,

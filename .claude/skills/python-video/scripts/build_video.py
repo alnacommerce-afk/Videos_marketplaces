@@ -57,10 +57,23 @@ def plan_voice(sb: dict, cfg: dict, job_dir: Path, mode: str, log: Logger, allow
     from common import cache_dir
     clips, needs = dict(pres_clips), {}
     sr = cfg["audio"]["sample_rate"]
+    bud = cfg["elevenlabs"].get("budget") or {}
+    if pres_clips:  # a embaixadora já fala: não paga narração por cima
+        return clips, {"voice": "embaixadora (HeyGen); sem narração ElevenLabs para economizar"}
+    spent, n_voiced = 0, 0
     for s in sb["scenes"]:
-        if not s.get("voice") or s.get("presenter"):
+        if not s.get("voice"):
             continue
-        mp3 = A.tts_elevenlabs(s["voice"], cfg, cache_dir(cfg), log, allow_voice_change)
+        if n_voiced >= bud.get("max_scenes_per_video", 99) or spent + len(s["voice"]) > bud.get("max_chars_per_video", 10 ** 6):
+            s["voice_enabled"] = False  # orçamento por vídeo: só as falas mais importantes (as primeiras)
+            continue
+        try:
+            mp3 = A.tts_elevenlabs(s["voice"], cfg, cache_dir(cfg), log, allow_voice_change)
+        except A.VoiceBudgetExceeded as e:
+            log.warn("narração pulada: orçamento do ElevenLabs", motivo=str(e))
+            continue
+        spent += len(s["voice"])
+        n_voiced += 1
         arr = A.decode_audio(mp3, sr)
         clips[s["index"]] = arr
         needs[s["index"]] = (0.12 if s["role"] == "HOOK" else 0.25) + len(arr) / sr + 0.2
