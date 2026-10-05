@@ -141,6 +141,26 @@ def check_music(cfg):
         "" if files else "Opcional: coloque faixas licenciadas em music/ (ver music/README.md)")
 
 
+def check_presenter(cfg):
+    from heygen import HeyGen
+    hg = HeyGen(cfg)
+    on = bool(cfg.get("presenter", {}).get("enabled"))
+    if hg.ready():
+        add("OK" if on else "AVISO", "Embaixadora (HeyGen)", "chave, avatar e voz prontos" + ("" if on else "; DESLIGADA em config (presenter.enabled)"),
+            "" if on else 'Para ligar: "presenter": {"enabled": true} em config/config.json')
+    else:
+        faltam = [n for n, v in (("chave", hg.key), ("avatar_id", hg.avatar_id), ("voice_id", hg.voice_id)) if not v]
+        add("AVISO", "Embaixadora (HeyGen)", "opcional, não pronta: falta " + ", ".join(faltam),
+            "Chave em API\\APIheygen.txt; avatar: python scripts\\heygen.py avatar --photo embaixadora\\embaixadora.png --confirm-consent --voice-id ID")
+
+
+def check_sfx():
+    from audio import SFX_LIB_DIR
+    n = len(list(SFX_LIB_DIR.glob("*.mp3"))) if SFX_LIB_DIR.exists() else 0
+    add("OK" if n else "AVISO", "Efeitos sonoros", f"{n} efeito(s) ElevenLabs na biblioteca" if n else "usando efeitos sintetizados",
+        "" if n else "Opcional: python scripts\\elevenlabs_sfx.py generate (usa a chave do ElevenLabs)")
+
+
 def check_notify():
     tg = bool(os.environ.get("TELEGRAM_BOT_TOKEN") and os.environ.get("TELEGRAM_CHAT_ID"))
     from notify import email_settings
@@ -253,7 +273,7 @@ def main(argv=None) -> int:
     a = ap.parse_args(argv)
     cfg = load_config()
     check_python(); check_packages(); check_ffmpeg(); check_fonts(cfg); check_dirs(cfg)
-    check_store(cfg, a.offline); check_voice(cfg); check_music(cfg); check_notify(); check_broll(cfg); check_task(); check_last_runs(cfg)
+    check_store(cfg, a.offline); check_voice(cfg); check_music(cfg); check_presenter(cfg); check_sfx(); check_notify(); check_broll(cfg); check_task(); check_last_runs(cfg)
     if a.smoke and not any(r[0] == "FALHA" and r[1] in ("FFmpeg", "ffmpeg", "ffprobe", "Fonte") for r in ROWS):
         smoke(cfg)
     icons = {"OK": "OK   ", "AVISO": "AVISO", "FALHA": "FALHA"}

@@ -182,7 +182,7 @@ class Renderer:
         if j not in self._clips:
             sc = self.scenes[j]
             self._clips[j] = ClipSource(sc["clip"]["path"], self.W, self.H, self.fps,
-                                        pan_dur=sc["duration"] + self._tw(j), fill=self.cfg.get("broll", {}).get("fill_mode", "cover_pan"))
+                                        start=0.0 if sc.get("presenter") else 0.4, pan_dur=sc["duration"] + self._tw(j), fill=self.cfg.get("broll", {}).get("fill_mode", "cover_pan"))
         return self._clips[j]
 
     def photo_frame(self, j: int, tau: float, peek: bool = False) -> Image.Image:

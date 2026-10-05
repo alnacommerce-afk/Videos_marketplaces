@@ -157,7 +157,33 @@ def _noise_sweep(dur, sr, f0, f1, width=0.55, seed=0):
     return out / (np.max(np.abs(out)) + 1e-9)
 
 
+SFX_LIB_DIR = CONFIG_PATH.parent.parent / "sfx"
+_SFX_LIB: dict = {}
+
+
+def library_sfx(kind: str, sr: int) -> np.ndarray | None:
+    """Efeito da biblioteca ElevenLabs (sfx\\<tipo>.mp3), se existir; senão None (usa o sintetizado)."""
+    for ext in ("mp3", "wav"):
+        f = SFX_LIB_DIR / f"{kind}.{ext}"
+        if f.exists():
+            key = (str(f), sr, f.stat().st_mtime)
+            if key not in _SFX_LIB:
+                try:
+                    arr = decode_audio(f, sr)[: int(sr * 1.6)]
+                    n = min(len(arr), int(sr * 0.04))
+                    if n:
+                        arr[-n:] *= np.linspace(1, 0, n)[:, None]  # fade curto: sem estalo no corte
+                    _SFX_LIB[key] = arr * 0.9 / (np.max(np.abs(arr)) + 1e-9)
+                except Exception:
+                    _SFX_LIB[key] = None
+            return _SFX_LIB[key]
+    return None
+
+
 def synth_sfx(kind: str, sr: int = SR_DEFAULT, seed: int = 7) -> np.ndarray:
+    lib = library_sfx(kind, sr)
+    if lib is not None:
+        return lib.copy()
     rng = np.random.default_rng(seed)
     if kind in ("whoosh", "transition"):
         n = _noise_sweep(0.75, sr, 350, 4200, seed=seed)
@@ -459,7 +485,7 @@ def build_mix(sb: dict, cfg: dict, voice_clips: dict[int, np.ndarray], logger: L
         clip = voice_clips.get(s["index"])
         if clip is None:
             continue
-        start = s["start"] + (0.12 if s["role"] == "HOOK" else 0.25)
+        start = s["start"] + (0.0 if s.get("presenter") else (0.12 if s["role"] == "HOOK" else 0.25))  # fala da embaixadora = áudio do próprio clipe
         i0 = int(start * sr)
         clip = clip * db(a["voice_gain_db"])
         i1 = min(N, i0 + len(clip))

@@ -55,6 +55,8 @@ def eligibility(brief: dict, name: str, spec: dict) -> tuple[bool, str]:
         return False, f"precisa de fato do tipo {kinds}"
     if len(brief.get("broll") or []) < req.get("min_broll", 0):
         return False, f"precisa de {req['min_broll']} clipes de ambiente"
+    if req.get("min_presenter") and not brief.get("presenter"):
+        return False, "precisa da abertura da embaixadora (presenter.enabled + avatar + voz)"
     return True, ""
 
 
@@ -257,14 +259,25 @@ def build_storyboard(brief: dict, cfg: dict, archetype: str, seed: int | None = 
     use_ok = {f["id"] for f in brief["confirmed_facts"] if f["usable"] and f["kind"] == "use" and f["display"]
               and not (safe_mode and is_external(f["display"]))}
     broll_items = [b for b in (brief.get("broll") or []) if b["fact_id"] in use_ok][: cfg.get("broll", {}).get("max_per_video", 1)]
+    pres = brief.get("presenter")
+    if pres and expected_text(pres["source"], brief, cfg) != pres["text"]:
+        raise PipelineError("Texto da embaixadora não bate com a fonte rastreável")
     beats, n_amb = [], 0
     for b in spec["beats"]:
         if b.get("optional") == "broll":
             if n_amb >= len(broll_items):
                 continue
             n_amb += 1
+        if b.get("optional") == "presenter" and not pres:
+            continue
         beats.append(b)
-    durs = _split_durations([b["w"] for b in beats], total, fps)
+    pres_i = next((k for k, b in enumerate(beats) if b.get("optional") == "presenter"), None)
+    if pres_i is None:
+        durs = _split_durations([b["w"] for b in beats], total, fps)
+    else:  # a abertura da embaixadora tem duração própria (a fala não pode ser cortada)
+        pres_d = round(min(pres["duration"] + 0.15, cfg["presenter"].get("intro_max_s", 5.0) + 0.3) * fps) / fps
+        rest = _split_durations([b["w"] for k, b in enumerate(beats) if k != pres_i], total - pres_d, fps)
+        durs = rest[:pres_i] + [pres_d] + rest[pres_i:]
 
     # imagens + pontos de interesse
     imgs = brief["product"]["images"]
@@ -299,6 +312,24 @@ def build_storyboard(brief: dict, cfg: dict, archetype: str, seed: int | None = 
     notes: list[str] = []
     for i, (beat, dur) in enumerate(zip(beats, durs)):
         shot = beat["shot"]
+        if beat.get("optional") == "presenter":
+            vsel = "marker"  # caixa sólida: legível sobre o fundo claro do estúdio
+            scenes.append({
+                "index": i + 1, "role": beat["role"], "start": round(t, 3), "duration": round(dur, 3),
+                "image_index": None, "image": None, "image_sha256": None,
+                "camera": {"shot": "broll", "move": "static", "dir": 1, "fill": 1.0, "z0": 1.0, "z1": 1.0, "c0": [0.5, 0.5],
+                           "c1": [0.5, 0.5], "ease": "in_out", "parallax": False},
+                "focus_pull": False, "presenter": True,
+                "clip": {"path": pres["path"], "presenter": True, "duration": pres["duration"], "video_id": pres.get("video_id")},
+                "transition_in": {"type": "hard_cut", "duration": 0.0, "direction": 1},
+                "text": {"source": pres["source"], "role": "headline", "text": pres["text"], "anim": "words", "t_in": 0.15,
+                         "position": "top", "variant": vsel},
+                "voice": pres["text"], "sfx": [{"type": beat["sfx"], "at": 0.0}] if beat.get("sfx") else [],
+                "purpose": "EMBAIXADORA · abertura falada (HeyGen) com roteiro rastreável",
+            })
+            last_variant = vsel
+            t += dur
+            continue
         if beat.get("optional") == "broll":
             it = broll_items[clip_i]
             clip_i += 1

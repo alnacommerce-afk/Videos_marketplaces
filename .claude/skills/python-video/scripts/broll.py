@@ -267,6 +267,9 @@ def credits_text(sb: dict) -> str:
         lines.insert(0, "MODO DEMONSTRAÇÃO: os clipes podem mostrar um produto parecido (não o seu). Use só para avaliar; não publique sem revisar.")
     for s in sb["scenes"]:
         c = s.get("clip")
+        if s.get("presenter"):
+            lines.append(f"- Cena {s['index']}: embaixadora da marca gerada por IA (HeyGen), vídeo {c.get('video_id')}. Confira se o marketplace exige aviso de conteúdo gerado por IA.")
+            continue
         if c:
             sim = c.get("similarity")
             extra = f" | proximidade {sim['score']} ({', '.join(sim['matched'])})" if sim else ""

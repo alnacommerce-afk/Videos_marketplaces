@@ -744,6 +744,12 @@ def build_brief(raw: dict, cfg: dict, http: Http | None, logger: Logger, base_di
     except Exception as e:
         brief["broll"] = []
         logger.warn("b-roll ignorado", erro=str(e)[:160])
+    try:  # embaixadora da marca (fase 2, opcional)
+        from heygen import prepare_presenter
+        brief["presenter"] = prepare_presenter(brief, cfg, logger)
+    except Exception as e:
+        brief["presenter"] = None
+        logger.warn("embaixadora ignorada", erro=str(e)[:160])
     save_json(dest / "brief.json", brief)
     return brief
 

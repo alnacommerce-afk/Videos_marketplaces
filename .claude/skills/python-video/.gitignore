@@ -18,3 +18,8 @@ teste/
 # pasta local de chaves (nunca no repositório)
 API/
 API/*
+
+# embaixadora (imagem da pessoa e avatar travado: só no PC do dono)
+embaixadora/
+config/presenter.lock.json
+sfx/

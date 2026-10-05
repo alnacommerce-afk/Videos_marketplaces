@@ -108,3 +108,21 @@ def eleven_credentials(cfg: dict, base: Path | None = None) -> tuple[str | None,
                 key = None
     vid = os.environ.get(e["voice_id_env"], "").strip() or kv.get("voice_id") or kv.get("voice") or None
     return key, vid
+
+
+HEYGEN_FILES = ["APIheygen", "HeyGen", "*heygen*"]
+
+
+def heygen_credentials(base: Path | None = None) -> dict:
+    """{key, avatar_id, voice_id} do HeyGen: variável HEYGEN_API_KEY ou arquivo em API\\ (`api_key=...`, ou só a chave numa linha).
+    avatar_id/voice_id não são segredos: podem estar no mesmo arquivo (`avatar_id=`, `voice_id=`) ou em config/presenter.lock.json."""
+    kv = read_kv(HEYGEN_FILES, base)
+    key = os.environ.get("HEYGEN_API_KEY", "").strip() or kv.get("api_key") or kv.get("key") or kv.get("x_api_key")
+    if not key:
+        f = find_secret_file(HEYGEN_FILES, base)
+        if f:
+            key = _extract(_read_text(f), None)
+            if key and re.search(r"[=:\s]", key):
+                key = None
+    return {"key": key, "avatar_id": os.environ.get("HEYGEN_AVATAR_ID") or kv.get("avatar_id"),
+            "voice_id": os.environ.get("HEYGEN_VOICE_ID") or kv.get("voice_id")}

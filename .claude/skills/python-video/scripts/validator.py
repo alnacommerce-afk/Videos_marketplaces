@@ -169,7 +169,7 @@ def validate(mp4: Path, sb: dict, brief: dict, cfg: dict, render_report: dict | 
         c.add("relatório de render disponível", False, "sem render_report", severity="warn")
 
     # clipes de ambiente (b-roll): só ilustram USO confirmado, com rótulo, origem registrada e sem mostrar outro produto
-    clips = [s for s in sb["scenes"] if s.get("clip")]
+    clips = [s for s in sb["scenes"] if s.get("clip") and not s.get("presenter")]
     if clips:
         bcfg = cfg.get("broll", {})
         c.add("b-roll: no máximo o permitido por vídeo", len(clips) <= bcfg.get("max_per_video", 1), f"{len(clips)} clipe(s)")
@@ -205,6 +205,13 @@ def validate(mp4: Path, sb: dict, brief: dict, cfg: dict, render_report: dict | 
         c.add("b-roll: sem crianças nas tags (exceto uso infantil confirmado, nunca em close)", not bad_tags, "; ".join(bad_tags)[:200])
         c.add("b-roll: clipe longo o bastante para a cena (sem congelar)", not short, "; ".join(short)[:200], severity="warn")
 
+    pres = [s for s in sb["scenes"] if s.get("presenter")]
+    if pres:  # embaixadora: fala rastreável, dura o bastante e não é cortada
+        pc = cfg.get("presenter", {})
+        okp = all(s.get("voice") and s["text"] and s["voice"] == s["text"]["text"] and s["duration"] <= pc.get("intro_max_s", 5.0) + 0.35 for s in pres)
+        c.add("embaixadora: fala = texto rastreável e abertura curta", okp, f"{[round(s['duration'], 2) for s in pres]} s")
+        if audio_report:
+            c.add("embaixadora: fala presente e não cortada", audio_report.get("has_voice", False) and not audio_report.get("voice_cut", False))
     last = sb["scenes"][-1]
     safe_mode = bool(cfg["brand"].get("marketplace_safe"))
     want = "closing" if safe_mode else "cta"

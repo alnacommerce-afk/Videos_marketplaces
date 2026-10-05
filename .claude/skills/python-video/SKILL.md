@@ -161,6 +161,18 @@ Gera um vídeo que **alterna fotos reais do produto e até 3 clipes do Pixabay**
 * **ElevenLabs:** crie `API\APIelevenlabs.txt` com duas linhas: `api_key=SUA_CHAVE` e `voice_id=ID_DA_VOZ` (ou só a chave numa linha + variável `ELEVENLABS_VOICE_ID`). O código usa a API REST de texto-para-voz (`xi-api-key`, `model_id`, `output_format`); a voz é travada na 1ª vez (`config/voice.lock.json`). Modelo padrão `eleven_multilingual_v2` (pt-BR); `eleven_v4` pode ser testado depois trocando `elevenlabs.model_id`. O voice_id vem da biblioteca de vozes da sua conta.
 * **E-mail:** `API\APIemail.txt` com `user=`, `password=` (senha de app do Google) e opcional `to=` (padrão `asm.express.logistica@gmail.com`). Teste: `python scripts\notify.py test`.
 
+## Embaixadora da marca (HeyGen, fase 2) e efeitos ElevenLabs
+
+**Embaixadora** (opcional, `presenter.enabled`, desligada por padrão): a modelo da marca abre o vídeo (3–5 s) falando uma frase **nossa e rastreável** (a pergunta-gancho com o nome do produto, ou um fato de uso confirmado), gerada na API v3 do HeyGen (`/v3/assets` → `/v3/avatars` photo → `/v3/videos` avatar → `GET /v3/videos/{id}`). Nunca o Video Agent, nunca criança gerada por IA. Arquétipo `AMBASSADOR_OPEN` (só elegível com a abertura gerada).
+1. Foto em `C:\ALNA\python-video\embaixadora\embaixadora.png` (fora do git).
+2. `API\APIheygen.txt` com `api_key=...` (e `voice_id=`).
+3. `python scripts\heygen.py avatar --photo embaixadora\embaixadora.png --confirm-consent --voice-id <ID>`. O `--confirm-consent` declara que a pessoa da foto autorizou o uso da imagem em avatar de IA (ou é personagem sintético). Trava o `avatar_id` em `config/presenter.lock.json`.
+4. `python scripts\heygen.py intro --text "Já conhece a Toalha?" --dry-run` mostra o que seria enviado (sem gastar crédito); sem `--dry-run` gera.
+5. Ligar `"presenter": {"enabled": true}` e usar `--archetype AMBASSADOR_OPEN`.
+Cada vídeo novo gasta crédito: há cache por roteiro e teto diário (`max_new_videos_per_day`). O `creditos.txt` avisa que há avatar de IA (confira se o marketplace exige aviso). **Os campos exatos do HeyGen v3 foram implementados pela documentação pública e testados só com servidor simulado: o 1º teste real pode pedir um ajuste; mande a mensagem de erro.**
+
+**Efeitos ElevenLabs:** `python scripts\elevenlabs_sfx.py generate` cria `sfx\*.mp3` (6 efeitos, uma chamada cada, uma vez); o pipeline usa o arquivo quando existe e o som sintetizado quando não. Música gerada pelo ElevenLabs **não** é usada: exige licença adicional para anúncios (conferir o plano antes).
+
 ## Atualizar pelo git e sessão local
 
 * `scripts\atualizar.ps1` clona/atualiza o repositório em `C:\ALNA\_repo` e copia só a pasta da skill para `C:\ALNA\python-video`, preservando `.venv`, `work`, `cache`, `output`, `teste`, `logs`, `API\`, `APIpixabay*` e `voice.lock.json`.

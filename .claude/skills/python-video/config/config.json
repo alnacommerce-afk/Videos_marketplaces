@@ -191,5 +191,16 @@
     "label_enabled": false,
     "fill_mode": "cover_pan",
     "key_file": "APIpixabay"
+  },
+  "presenter": {
+    "enabled": false,
+    "api_base": "https://api.heygen.com",
+    "resolution": "1080p",
+    "aspect_ratio": "9:16",
+    "intro_max_s": 5.0,
+    "max_words": 12,
+    "max_new_videos_per_day": 3,
+    "poll_s": 8,
+    "timeout_s": 900
   }
 }

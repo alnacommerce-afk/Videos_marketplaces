@@ -1381,6 +1381,98 @@
           "sfx": "pop"
         }
       ]
+    },
+    "AMBASSADOR_OPEN": {
+      "label": "Embaixadora abre, produto prova",
+      "pace": "medium",
+      "music": [
+        "MODERN",
+        "LIFESTYLE"
+      ],
+      "style": "bold",
+      "requires": {
+        "min_images": 2,
+        "min_facts": 2,
+        "min_presenter": 1
+      },
+      "_doc": "A embaixadora (HeyGen) abre com a pergunta-gancho (3-5 s); depois o produto real e os fatos. Só entra com `presenter.enabled` e uma abertura gerada.",
+      "beats": [
+        {
+          "role": "EMBAIXADORA",
+          "shot": "broll",
+          "move": [
+            "static"
+          ],
+          "w": 3.2,
+          "text": "presenter",
+          "optional": "presenter",
+          "anim": "fade",
+          "sfx": "swipe"
+        },
+        {
+          "role": "PRODUCT",
+          "shot": "hero_wide",
+          "move": [
+            "pull_out"
+          ],
+          "w": 2.8,
+          "text": "name",
+          "anim": "mask",
+          "transition": "whip",
+          "tw": 0.3,
+          "sfx": "whoosh"
+        },
+        {
+          "role": "PROOF",
+          "shot": "detail",
+          "move": [
+            "push_in",
+            "diagonal"
+          ],
+          "w": 2.8,
+          "text": "fact",
+          "anim": "slide",
+          "sfx": "click"
+        },
+        {
+          "role": "USE",
+          "shot": "broll",
+          "move": [
+            "static"
+          ],
+          "w": 2.6,
+          "text": "fact:use",
+          "optional": "broll",
+          "anim": "words",
+          "transition": "dissolve",
+          "tw": 0.4
+        },
+        {
+          "role": "PROOF_2",
+          "shot": "detail2",
+          "move": [
+            "pan_h",
+            "pan_v"
+          ],
+          "w": 2.8,
+          "text": "fact_card",
+          "anim": "slide",
+          "transition": "directional_wipe",
+          "tw": 0.35,
+          "sfx": "swipe"
+        },
+        {
+          "role": "FECHAMENTO",
+          "shot": "hero",
+          "move": [
+            "push_in"
+          ],
+          "w": 2.8,
+          "text": "cta",
+          "anim": "scale",
+          "sfx": "pop"
+        }
+      ]
     }
   }
 }

@@ -1346,6 +1346,153 @@ class TestEndToEnd(unittest.TestCase):
         md.parseString(xml.split("?>", 1)[1])
 
 
+class TestPresenterAndSfx(unittest.TestCase):
+    """Embaixadora (HeyGen simulado) e biblioteca de efeitos (ElevenLabs simulado)."""
+
+    @classmethod
+    def setUpClass(cls):
+        from common import run, which_tool
+        root = TMP / "hg"
+        root.mkdir(parents=True, exist_ok=True)
+        cls.intro = root / "intro.mp4"
+        run([which_tool("ffmpeg"), "-y", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=540x960:rate=30:duration=3", "-f", "lavfi", "-i",
+             "sine=frequency=300:duration=3", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "ultrafast", "-c:a", "aac", "-shortest", str(cls.intro)])
+        cls.tone = root / "tone.mp3"
+        run([which_tool("ffmpeg"), "-y", "-v", "error", "-f", "lavfi", "-i", "sine=frequency=800:duration=0.4", str(cls.tone)])
+        cls.calls = []
+        calls = cls.calls
+
+        class H(http.server.BaseHTTPRequestHandler):
+            def _json(self, obj, code=200):
+                body = json.dumps(obj).encode()
+                self.send_response(code); self.send_header("Content-Type", "application/json"); self.send_header("Content-Length", str(len(body))); self.end_headers(); self.wfile.write(body)
+
+            def do_POST(self):
+                n = int(self.headers.get("Content-Length", 0))
+                raw = self.rfile.read(n)
+                key = self.headers.get("X-Api-Key") or self.headers.get("xi-api-key")
+                calls.append({"path": self.path.split("?")[0], "key": key, "body": raw[:2000]})
+                if self.path.startswith("/v1/sound-generation"):
+                    data = cls.tone.read_bytes()
+                    self.send_response(200); self.send_header("Content-Type", "audio/mpeg"); self.send_header("Content-Length", str(len(data))); self.end_headers(); self.wfile.write(data)
+                elif self.path == "/v3/assets":
+                    self._json({"data": {"asset_id": "as1"}})
+                elif self.path == "/v3/avatars":
+                    self._json({"data": {"avatar_id": "av1"}})
+                elif self.path == "/v3/videos":
+                    self._json({"data": {"video_id": f"v{len([c for c in calls if c['path'] == '/v3/videos'])}", "status": "generating"}})
+                else:
+                    self.send_response(404); self.end_headers()
+
+            def do_GET(self):
+                if self.path.startswith("/v3/videos/"):
+                    base = f"http://127.0.0.1:{cls.srv.server_port}"
+                    self._json({"data": {"id": self.path.rsplit("/", 1)[1], "status": "completed", "video_url": base + "/files/intro.mp4", "duration": 3.0}})
+                elif self.path == "/files/intro.mp4":
+                    data = cls.intro.read_bytes()
+                    self.send_response(200); self.send_header("Content-Type", "video/mp4"); self.send_header("Content-Length", str(len(data))); self.end_headers(); self.wfile.write(data)
+                else:
+                    self.send_response(404); self.end_headers()
+
+            def log_message(self, *a): pass
+        cls.srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), H)
+        threading.Thread(target=cls.srv.serve_forever, daemon=True).start()
+        cls.base = f"http://127.0.0.1:{cls.srv.server_port}"
+        cls.cfg = cfg_fast_fps()
+        cls.cfg["store"]["min_delay_s"] = 0.0
+        cls.cfg["broll"]["enabled"] = False
+        cls.cfg["presenter"].update({"enabled": True, "api_base": cls.base, "poll_s": 0.05, "timeout_s": 20})
+        os.environ.update({"HEYGEN_API_KEY": "hgkey", "HEYGEN_AVATAR_ID": "av1", "HEYGEN_VOICE_ID": "vz1"})
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.srv.shutdown()
+        for k in ("HEYGEN_API_KEY", "HEYGEN_AVATAR_ID", "HEYGEN_VOICE_ID"):
+            os.environ.pop(k, None)
+
+    def _brief(self):
+        raws = pf.load_catalog(make_catalog(TMP / "cat_pres"))
+        return pf.get_brief(raws[0], self.cfg, LOG)
+
+    def test_presenter_script_is_traceable_cached_and_capped(self):
+        shutil.rmtree(Path(os.environ["ALNA_CACHE_DIR"]) / "heygen", ignore_errors=True)
+        self.calls.clear()
+        brief = self._brief()
+        pr = brief["presenter"]
+        self.assertTrue(pr, "abertura gerada")
+        self.assertEqual(pr["source"], "template:question")
+        self.assertEqual(SB.expected_text(pr["source"], brief, self.cfg), pr["text"])
+        post = next(c for c in self.calls if c["path"] == "/v3/videos")
+        body = json.loads(post["body"])
+        self.assertEqual((post["key"], body["type"], body["avatar_id"], body["voice_id"], body["aspect_ratio"]), ("hgkey", "avatar", "av1", "vz1", "9:16"))
+        self.assertNotIn("Confira", body["script"])
+        n = len([c for c in self.calls if c["path"] == "/v3/videos"])
+        self._brief()  # mesmo roteiro: vem do cache, não gasta crédito de novo
+        self.assertEqual(len([c for c in self.calls if c["path"] == "/v3/videos"]), n)
+        capped = copy.deepcopy(self.cfg)
+        capped["presenter"]["max_new_videos_per_day"] = 1
+        import heygen
+        with self.assertRaises(PipelineError):
+            heygen.generate_intro("Outra fala inédita?", capped, LOG)
+
+    def test_presenter_disabled_or_unconfigured_means_none(self):
+        import heygen
+        off = copy.deepcopy(self.cfg)
+        off["presenter"]["enabled"] = False
+        self.assertIsNone(heygen.prepare_presenter(self._brief(), off, LOG))
+        os.environ["HEYGEN_AVATAR_ID"] = ""
+        try:
+            self.assertIsNone(heygen.prepare_presenter(self._brief(), self.cfg, LOG), "sem avatar: segue sem a embaixadora")
+        finally:
+            os.environ["HEYGEN_AVATAR_ID"] = "av1"
+
+    def test_ambassador_archetype_and_end_to_end(self):
+        brief = self._brief()
+        sb = SB.build_storyboard(brief, self.cfg, "AMBASSADOR_OPEN", seed=2)
+        first = sb["scenes"][0]
+        self.assertTrue(first["presenter"] and first["voice"] == first["text"]["text"])
+        self.assertTrue(15 <= sb["total_duration"] <= 18, sb["total_duration"])
+        self.assertEqual(sb["scenes"][-1]["text"]["role"], "closing")
+        no_pres = dict(brief, presenter=None)
+        self.assertNotEqual(SB.eligible_archetypes(no_pres)["AMBASSADOR_OPEN"], "", "sem abertura gerada o arquétipo não é elegível")
+        if FAST:
+            self.skipTest("renderiza vídeo")
+        res = build_video(brief, self.cfg, "pres-e2e", day="2026-07-03", archetype="AMBASSADOR_OPEN", seed=2, voice_mode="off", out_root=TMP / "out-pres")
+        self.assertEqual(res["status"], "READY", res)
+        job = TMP / "work" / "2026-07-03" / "pres-e2e"
+        val = load_json(job / "validation.json")
+        self.assertTrue(val["ok"], val["errors"])
+        ar = load_json(job / "audio_report.json")
+        ev = ar["voice_events"][0]
+        self.assertEqual((ev["scene"], ev["start"]), (1, 0.0), "a fala da embaixadora começa junto com o clipe")
+        self.assertIn("embaixadora", (job / "creditos.txt").read_text(encoding="utf-8").lower())
+
+    def test_sfx_library_is_generated_once_and_preferred_over_synth(self):
+        import audio
+        import elevenlabs_sfx as ES
+        old = (ES.SFX_DIR, audio.SFX_LIB_DIR)
+        ES.SFX_DIR = audio.SFX_LIB_DIR = TMP / "sfx_lib"
+        shutil.rmtree(ES.SFX_DIR, ignore_errors=True)
+        os.environ["ELEVENLABS_API_KEY"] = "sk_" + "ab" * 16
+        try:
+            cfg = copy.deepcopy(self.cfg)
+            cfg["elevenlabs"]["api_base"] = self.base
+            synth = audio.synth_sfx("click", 44100)
+            self.calls.clear()
+            done = ES.generate_all(cfg, LOG)
+            self.assertEqual(set(done), set(ES.PROMPTS))
+            self.assertEqual(self.calls[0]["key"], "sk_" + "ab" * 16)
+            n = len(self.calls)
+            self.assertEqual(ES.generate_all(cfg, LOG), [], "segunda vez: nada novo, nenhuma chamada")
+            self.assertEqual(len(self.calls), n)
+            lib = audio.synth_sfx("click", 44100)
+            self.assertFalse(np.allclose(lib[: min(len(lib), len(synth))], synth[: min(len(lib), len(synth))]), "usa o arquivo da biblioteca")
+            self.assertLessEqual(len(lib), int(44100 * 1.6))
+        finally:
+            ES.SFX_DIR, audio.SFX_LIB_DIR = old
+            os.environ.pop("ELEVENLABS_API_KEY", None)
+
+
 if __name__ == "__main__":
     try:
         unittest.main(verbosity=2)

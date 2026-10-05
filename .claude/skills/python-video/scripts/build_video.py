@@ -40,20 +40,25 @@ def script_text(sb: dict) -> str:
 
 def plan_voice(sb: dict, cfg: dict, job_dir: Path, mode: str, log: Logger, allow_voice_change: bool):
     """Gera os clipes de locução e re-temporiza o storyboard. Retorna ({cena: array}, info)."""
+    sr0 = cfg["audio"]["sample_rate"]
+    pres_clips = {s["index"]: A.decode_audio(s["clip"]["path"], sr0) for s in sb["scenes"] if s.get("presenter")}  # fala da embaixadora
+    for s in sb["scenes"]:
+        if s.get("presenter"):
+            s["voice_enabled"] = True
     if mode == "off":
-        return {}, {"voice": "desativada"}
+        return pres_clips, {"voice": "desativada" + (" (exceto a embaixadora)" if pres_clips else "")}
     try:
         A.voice_settings(cfg)
     except A.VoiceNotConfigured as e:
         if mode == "required":
             raise
         log.warn("sem narração: ElevenLabs não configurado (vídeo segue com texto + trilha)", motivo=str(e))
-        return {}, {"voice": "não configurada"}
+        return pres_clips, {"voice": "não configurada"}
     from common import cache_dir
-    clips, needs = {}, {}
+    clips, needs = dict(pres_clips), {}
     sr = cfg["audio"]["sample_rate"]
     for s in sb["scenes"]:
-        if not s.get("voice"):
+        if not s.get("voice") or s.get("presenter"):
             continue
         mp3 = A.tts_elevenlabs(s["voice"], cfg, cache_dir(cfg), log, allow_voice_change)
         arr = A.decode_audio(mp3, sr)
