@@ -185,6 +185,7 @@
       "toddler",
       "teen"
     ],
+    "avoid_style_tags": ["animation", "animated", "cartoon", "3d", "render", "illustration", "motion graphics", "loop"],
     "allow_children": false,
     "kids_extra_avoid": ["portrait", "face", "closeup", "close-up", "selfie", "smile", "smiling"],
     "label": "Imagem ilustrativa",

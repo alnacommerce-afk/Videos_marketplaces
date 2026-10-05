@@ -59,6 +59,8 @@ SIMILARITY_TYPE = {"toalha": ["towel", "bath towel", "beach towel"], "banho": ["
                    "panela": ["pot", "pan"], "copo": ["cup", "glass"], "bolsa": ["bag"]}
 SIMILARITY_MATERIAL = {"algodao": ["cotton"], "poliester": ["polyester"], "elastano": ["spandex", "stretch"],
                        "microfibra": ["microfiber"], "madeira": ["wood", "wooden"], "bambu": ["bamboo"], "silicone": ["silicone"]}
+# palavras do tema que aparecem em tudo (ex.: "home fitness" não é "home decor"): não contam como casamento de tema
+GENERIC_THEME_WORDS = {"home", "person", "people"}
 PEOPLE_TAGS = {"woman", "man", "person", "people", "couple", "female", "male", "lady", "adult", "athlete"}
 
 
@@ -166,6 +168,8 @@ def choose_hit(hits: list[dict], conflicts: set[str], cfg: dict, skip_ids: set |
             continue
         if tags & avoid or any(a in tag_text for a in avoid):
             continue
+        if any(re.search(rf"\b{re.escape(a.lower())}", tag_text) for a in b.get("avoid_style_tags", [])):
+            continue  # animação/desenho/3D: queremos uso real, com pessoas de verdade
         if any(re.search(rf"\b{re.escape(w)}", tag_text) for w in conflicts):
             continue
         cand = {"hit": h, "rendition": {"url": rend["url"], "width": rend["width"], "height": rend["height"],
@@ -173,6 +177,8 @@ def choose_hit(hits: list[dict], conflicts: set[str], cfg: dict, skip_ids: set |
         if rank is None:
             return cand
         cand["score"], cand["matched"] = score_hit(h, idx, len(hits), rank)
+        if not [m for m in cand["matched"] if m != "pessoa"]:
+            continue  # só "tem gente" não basta: precisa casar com o produto ou com o tema do uso
         ok.append(cand)
     if not ok:
         return None
@@ -235,7 +241,7 @@ def prepare_broll(brief: dict, cfg: dict, logger: Logger, offline: bool = False)
                         if h.get("id") not in seen:
                             seen.add(h.get("id"))
                             cands.append(h)
-                rank = {"sim": similarity_terms(brief), "theme_words": [w for w in re.split(r"[ ,]+", theme_en) if w],
+                rank = {"sim": similarity_terms(brief), "theme_words": [w for w in re.split(r"[ ,]+", theme_en) if w and w not in GENERIC_THEME_WORDS],
                         "people": True, "min_score": 3, "kids": kids}
                 picked = choose_hit(cands, conflicts, cfg, used_ids, rank, kids=kids)
             else:

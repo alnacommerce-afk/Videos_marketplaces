@@ -762,6 +762,20 @@ class TestBroll(unittest.TestCase):
         self.assertEqual(self.broll.choose_hit([mk(4, "forest, tree")], set(), self.cfg, rank=rank), None, "sem relação com produto/tema: nenhum serve")
         self.assertEqual(self.broll.choose_hit(hits, set(), self.cfg)["hit"]["id"], 1, "rotina diária (sem ranking): primeiro que passa")
 
+    def test_theme_needs_all_its_words_and_real_footage(self):
+        mk = lambda i, tags: {"id": i, "tags": tags, "duration": 8, "videos": {"large": {"url": "", "width": 0}, "medium": {"url": f"u{i}", "width": 1920, "height": 1080}}}
+        brief = fake_brief_with_use("Ideal para praia", "Toalha de Banho")
+        rank = {"sim": self.broll.similarity_terms(brief), "theme_words": ["decor"], "people": True, "min_score": 3}
+        fit = mk(1, "woman, home fitness, workout, indoor training")
+        self.assertIsNone(self.broll.choose_hit([fit], set(), self.cfg, rank=rank), "'home fitness' não é decoração")
+        ok = mk(2, "home decor, living room, person, towel")
+        self.assertEqual(self.broll.choose_hit([fit, ok], set(), self.cfg, rank=rank)["hit"]["id"], 2)
+        cfg = copy.deepcopy(self.cfg)
+        cfg["broll"]["avoid_style_tags"] = ["animation", "cartoon"]
+        cart = mk(3, "towel, beach, person, cartoon, animation")
+        rank2 = {"sim": self.broll.similarity_terms(brief), "theme_words": ["beach"], "people": True, "min_score": 3}
+        self.assertIsNone(self.broll.choose_hit([cart], set(), cfg, rank=rank2), "desenho/animação fora: queremos pessoas reais")
+
     def test_children_only_with_confirmed_kids_use_and_demo_switch(self):
         mk = lambda i, tags: {"id": i, "tags": tags, "duration": 8, "videos": {"large": {"url": "", "width": 0}, "medium": {"url": f"u{i}", "width": 1920, "height": 1080}}}
         hits = [mk(1, "beach, children, sea"), mk(2, "beach, kids, towel, portrait")]
