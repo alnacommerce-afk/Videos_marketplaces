@@ -120,7 +120,8 @@ def check_store(cfg, offline):
 
 def check_voice(cfg):
     e = cfg["elevenlabs"]
-    k, v = os.environ.get(e["api_key_env"]), os.environ.get(e["voice_id_env"])
+    from localsecrets import eleven_credentials
+    k, v = eleven_credentials(cfg)
     lock = SKILL_DIR / "config" / "voice.lock.json"
     if k and v:
         locked = json.loads(lock.read_text())["voice_id"] if lock.exists() else None
@@ -129,8 +130,8 @@ def check_voice(cfg):
         else:
             add("OK", "ElevenLabs", "chave e voz configuradas" + (" (voz travada)" if locked else " (será travada no 1º uso)"))
     else:
-        add("AVISO", "ElevenLabs", "não configurado: vídeos saem SEM narração",
-            f'setx {e["api_key_env"]} "chave" e setx {e["voice_id_env"]} "id-da-voz" (depois reabra o terminal)')
+        add("AVISO", "ElevenLabs", ("chave lida, falta o voice_id" if k else "não configurado") + (": vídeos saem SEM narração" if not (k and v) else ""),
+            "Crie API\\APIelevenlabs.txt com 2 linhas: api_key=SUA_CHAVE e voice_id=ID_DA_VOZ (ou use setx " + e["api_key_env"] + ")")
 
 
 def check_music(cfg):
@@ -142,7 +143,8 @@ def check_music(cfg):
 
 def check_notify():
     tg = bool(os.environ.get("TELEGRAM_BOT_TOKEN") and os.environ.get("TELEGRAM_CHAT_ID"))
-    em = bool(os.environ.get("ALNA_SMTP_HOST") and os.environ.get("ALNA_SMTP_USER") and os.environ.get("ALNA_SMTP_PASSWORD"))
+    from notify import email_settings
+    em = email_settings() is not None
     if tg or em:
         add("OK", "Aviso ao terminar", ", ".join(n for n, f in (("Telegram", tg), ("e-mail", em)) if f) + "  (teste: python notify.py test)")
     else:

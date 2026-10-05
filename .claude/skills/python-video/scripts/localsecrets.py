@@ -46,6 +46,11 @@ def find_secret_file(file_names: list[str], base: Path | None = None) -> Path | 
         # na pasta da skill e na subpasta API\ (onde o dono guarda as chaves)
         dirs = [None] if Path(name).is_absolute() else [base, base / "API"]
         for d in dirs:
+            if d is not None and "*" in name:  # nome com curinga (ex.: *eleven*): primeiro arquivo que combina
+                hits = sorted(x for x in d.glob(name) if x.is_file()) if d.is_dir() else []
+                if hits:
+                    return hits[0]
+                continue
             p = Path(name) if d is None else d / name
             for suffix in ("", ".txt", ".txt.txt"):
                 cand = p.with_name(p.name + suffix)
@@ -66,3 +71,40 @@ def read_secret(env_name: str, file_names: list[str], pattern: str | None = None
         if val:
             return val, f"arquivo {f.name}"
     return None, ""
+
+
+def read_kv(file_names: list[str], base: Path | None = None) -> dict[str, str]:
+    """Lê um arquivo local de linhas `chave=valor` / `chave: valor` (# comenta). Ex.: APIemail com host/user/password/to."""
+    f = find_secret_file(file_names, base)
+    out: dict[str, str] = {}
+    if not f:
+        return out
+    for line in _read_text(f).splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or not re.search(r"[=:]", line):
+            continue
+        k, v = re.split(r"\s*[=:]\s*", line, maxsplit=1)
+        out[re.sub(r"[\s_-]+", "_", k.strip().lower())] = v.strip().strip("\"'")
+    return out
+
+
+ELEVEN_KEY = r"\bsk_[A-Za-z0-9]{20,}\b"
+ELEVEN_FILES = ["APIelevenlabs", "ElevenLabs", "*eleven*"]
+
+
+def eleven_credentials(cfg: dict, base: Path | None = None) -> tuple[str | None, str | None]:
+    """(chave, voice_id) do ElevenLabs: variável de ambiente ou arquivo local em API\\ (chave sozinha na linha, ou
+    `api_key=...` / `voice_id=...`). Nunca loga o valor."""
+    e = cfg["elevenlabs"]
+    key, _ = read_secret(e["api_key_env"], ELEVEN_FILES, ELEVEN_KEY, base=base)
+    kv = read_kv(ELEVEN_FILES, base)
+    if not key:
+        key = kv.get("api_key") or kv.get("key") or kv.get("xi_api_key")
+    if not key:  # arquivo só com a chave, sem rótulo
+        f = find_secret_file(ELEVEN_FILES, base)
+        if f:
+            key = _extract(_read_text(f), None)
+            if key and re.search(r"[=:\s]", key):
+                key = None
+    vid = os.environ.get(e["voice_id_env"], "").strip() or kv.get("voice_id") or kv.get("voice") or None
+    return key, vid

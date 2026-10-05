@@ -6,7 +6,11 @@ Canais (configure por variável de ambiente; sem configurar = só grava logs/ult
     TELEGRAM_BOT_TOKEN   token do bot (crie falando com @BotFather)
     TELEGRAM_CHAT_ID     seu chat id (fale com o bot e abra https://api.telegram.org/bot<TOKEN>/getUpdates)
 
-  E-mail (SMTP; no Gmail use uma "senha de app")
+  E-mail (SMTP; no Gmail use uma "senha de app"). Mais simples: arquivo local API\\APIemail.txt com
+      user=seu@gmail.com
+      password=senha-de-app   (16 letras; Conta Google > Segurança > Senhas de app)
+      to=asm.express.logistica@gmail.com   (opcional; este já é o padrão)
+  Ou por variáveis:
     ALNA_SMTP_HOST (ex.: smtp.gmail.com)  ALNA_SMTP_PORT (587)  ALNA_SMTP_USER  ALNA_SMTP_PASSWORD  ALNA_NOTIFY_TO
 
   python notify.py test     # envia uma mensagem de teste pelos canais configurados
@@ -57,16 +61,31 @@ def _send_telegram(text: str) -> bool:
     return True
 
 
-def _send_email(subject: str, body: str) -> bool:
-    host, user, pwd, to = (os.environ.get(k) for k in ("ALNA_SMTP_HOST", "ALNA_SMTP_USER", "ALNA_SMTP_PASSWORD", "ALNA_NOTIFY_TO"))
+DEFAULT_TO = "asm.express.logistica@gmail.com"  # destino padrão dos avisos (o dono)
+
+
+def email_settings(base=None) -> dict | None:
+    """SMTP por variáveis de ambiente OU arquivo local API\\APIemail (host=, port=, user=, password=, to=). Sem senha = sem e-mail."""
+    from localsecrets import read_kv
+    kv = read_kv(["APIemail", "*email*", "*gmail*"], base)
+    g = lambda env, k, d=None: os.environ.get(env) or kv.get(k) or d
+    host, user, pwd = g("ALNA_SMTP_HOST", "host", "smtp.gmail.com" if kv else None), g("ALNA_SMTP_USER", "user"), g("ALNA_SMTP_PASSWORD", "password")
     if not (host and user and pwd):
+        return None
+    return {"host": host, "port": int(g("ALNA_SMTP_PORT", "port", "587")), "user": user, "password": pwd.replace(" ", ""),
+            "to": g("ALNA_NOTIFY_TO", "to", DEFAULT_TO)}
+
+
+def _send_email(subject: str, body: str) -> bool:
+    st = email_settings()
+    if not st:
         return False
     msg = EmailMessage()
-    msg["Subject"], msg["From"], msg["To"] = subject, user, to or user
+    msg["Subject"], msg["From"], msg["To"] = subject, st["user"], st["to"]
     msg.set_content(body)
-    with smtplib.SMTP(host, int(os.environ.get("ALNA_SMTP_PORT", "587")), timeout=30) as s:
+    with smtplib.SMTP(st["host"], st["port"], timeout=30) as s:
         s.starttls()
-        s.login(user, pwd)
+        s.login(st["user"], st["password"])
         s.send_message(msg)
     return True
 

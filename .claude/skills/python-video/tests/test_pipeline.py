@@ -969,6 +969,26 @@ class TestSecrets(unittest.TestCase):
         self.assertEqual(val, "12345678-" + "ab" * 12)
         self.assertNotIn(val, origin)
 
+    def test_elevenlabs_and_email_settings_from_API_folder(self):
+        import localsecrets as LS
+        import notify
+        cfg = load_config()
+        for k in ("ELEVENLABS_API_KEY", "ELEVENLABS_VOICE_ID", "ALNA_SMTP_HOST", "ALNA_SMTP_USER", "ALNA_SMTP_PASSWORD", "ALNA_NOTIFY_TO"):
+            os.environ.pop(k, None)
+        base = TMP / "skill_eleven"
+        (base / "API").mkdir(parents=True, exist_ok=True)
+        fake = "sk_" + "a1" * 16
+        (base / "API" / "APIelevenlabs.txt").write_text(f"api_key={fake}\nvoice_id=ABCDEFGHIJKLMNOPQRST\n", encoding="utf-8")
+        key, vid = LS.eleven_credentials(cfg, base)
+        self.assertEqual((key, vid), (fake, "ABCDEFGHIJKLMNOPQRST"))
+        (base / "API" / "APIelevenlabs.txt").write_text(fake + "\n", encoding="utf-8")  # só a chave, sem rótulo
+        self.assertEqual(LS.eleven_credentials(cfg, base), (fake, None))
+        self.assertEqual(LS.eleven_credentials(cfg, TMP / "vazio"), (None, None))
+        (base / "API" / "APIemail.txt").write_text("user=x@gmail.com\npassword=abcd efgh ijkl mnop\n", encoding="utf-8")
+        st = notify.email_settings(base)
+        self.assertEqual((st["host"], st["port"], st["password"], st["to"]), ("smtp.gmail.com", 587, "abcdefghijklmnop", "asm.express.logistica@gmail.com"))
+        self.assertIsNone(notify.email_settings(TMP / "vazio"))
+
     def test_no_secret_in_project_files(self):
         """Falha se uma chave (Pixabay/ElevenLabs/service_role) aparecer em qualquer arquivo versionável da skill."""
         from common import SKILL_DIR

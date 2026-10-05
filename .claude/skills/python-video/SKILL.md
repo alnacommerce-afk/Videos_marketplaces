@@ -146,6 +146,11 @@ Gera um vídeo que **alterna fotos reais do produto e até 3 clipes do Pixabay**
 - **A rotina diária nunca usa o modo demo:** ela mantém 1 clipe, bloqueia produto parecido e crianças, e o `DEMO_MIX` só é elegível com ≥ 2 clipes.
 - Cena de clipe sem texto é permitida (o clipe aponta, em `clip.fact_id`, o fato de uso que o justifica; o gate confere). Só um clipe por vídeo leva o texto do fato de uso.
 
+## Narração ElevenLabs e aviso por e-mail (chaves em `API\`)
+
+* **ElevenLabs:** crie `API\APIelevenlabs.txt` com duas linhas: `api_key=SUA_CHAVE` e `voice_id=ID_DA_VOZ` (ou só a chave numa linha + variável `ELEVENLABS_VOICE_ID`). O código usa a API REST de texto-para-voz (`xi-api-key`, `model_id`, `output_format`); a voz é travada na 1ª vez (`config/voice.lock.json`). Modelo padrão `eleven_multilingual_v2` (pt-BR); `eleven_v4` pode ser testado depois trocando `elevenlabs.model_id`. O voice_id vem da biblioteca de vozes da sua conta.
+* **E-mail:** `API\APIemail.txt` com `user=`, `password=` (senha de app do Google) e opcional `to=` (padrão `asm.express.logistica@gmail.com`). Teste: `python scripts\notify.py test`.
+
 ## Atualizar pelo git e sessão local
 
 * `scripts\atualizar.ps1` clona/atualiza o repositório em `C:\ALNA\_repo` e copia só a pasta da skill para `C:\ALNA\python-video`, preservando `.venv`, `work`, `cache`, `output`, `teste`, `logs`, `API\`, `APIpixabay*` e `voice.lock.json`.

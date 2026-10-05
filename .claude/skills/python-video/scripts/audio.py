@@ -82,10 +82,12 @@ class VoiceNotConfigured(PipelineError):
 
 def voice_settings(cfg: dict) -> tuple[str, str]:
     e = cfg["elevenlabs"]
-    key, vid = os.environ.get(e["api_key_env"]), os.environ.get(e["voice_id_env"])
+    from localsecrets import eleven_credentials
+    key, vid = eleven_credentials(cfg)
     if not key or not vid:
         raise VoiceNotConfigured(
-            f"ElevenLabs não configurado: defina as variáveis de ambiente {e['api_key_env']} e {e['voice_id_env']}.")
+            f"ElevenLabs não configurado: coloque a chave e o voice_id num arquivo em API\\ (ex.: APIelevenlabs) "
+            f"ou defina as variáveis de ambiente {e['api_key_env']} e {e['voice_id_env']}.")
     return key, vid
 
 
