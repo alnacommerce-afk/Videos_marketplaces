@@ -776,6 +776,17 @@ class TestBroll(unittest.TestCase):
         rank2 = {"sim": self.broll.similarity_terms(brief), "theme_words": ["beach"], "people": True, "min_score": 3}
         self.assertIsNone(self.broll.choose_hit([cart], set(), cfg, rank=rank2), "desenho/animação fora: queremos pessoas reais")
 
+    def test_demo_falls_back_instead_of_failing_without_clips(self):
+        from build_video import demo_archetype
+        brief, use = self._brief_with_clip()
+        brief["broll"] = []
+        arch, note = demo_archetype(brief, "DEMO_MIX")
+        self.assertEqual(arch, "CONNECT_TRUST")
+        self.assertIn("poucos clipes", note)
+        brief3, _ = self._brief_with_clips(3)
+        self.assertEqual(demo_archetype(brief3, "DEMO_MIX"), ("DEMO_MIX", ""))
+        self.assertEqual(demo_archetype(brief, "FAST_PACED_AD")[0], "FAST_PACED_AD", "arquétipo pedido de propósito não é trocado")
+
     def test_children_only_with_confirmed_kids_use_and_demo_switch(self):
         mk = lambda i, tags: {"id": i, "tags": tags, "duration": 8, "videos": {"large": {"url": "", "width": 0}, "medium": {"url": f"u{i}", "width": 1920, "height": 1080}}}
         hits = [mk(1, "beach, children, sea"), mk(2, "beach, kids, towel, portrait")]

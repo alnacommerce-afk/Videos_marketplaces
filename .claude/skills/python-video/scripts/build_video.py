@@ -194,6 +194,22 @@ def build_video(brief: dict, cfg: dict, job_id: str, day: str | None = None, arc
         raise PipelineError(err) from e
 
 
+def demo_archetype(brief: dict, archetype: str | None) -> tuple[str | None, str]:
+    """No --demo, DEMO_MIX precisa de >= 2 clipes. Sem eles (produto sem uso confirmado), cai em CONNECT_TRUST (ou escolha automática)
+    em vez de falhar. Devolve (arquétipo, aviso)."""
+    from storyboard import eligibility
+    from common import load_archetypes
+    arch = load_archetypes()
+    if archetype and archetype != "DEMO_MIX":
+        return archetype, ""
+    if eligibility(brief, "DEMO_MIX", arch["DEMO_MIX"])[0]:
+        return "DEMO_MIX", ""
+    for alt in ("CONNECT_TRUST",):
+        if eligibility(brief, alt, arch[alt])[0]:
+            return alt, "poucos clipes de uso para o DEMO_MIX: usando CONNECT_TRUST (só fotos + fatos)"
+    return None, "poucos clipes de uso para o DEMO_MIX: arquétipo escolhido automaticamente"
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Gera um vídeo comercial a partir de um produto")
     src = ap.add_mutually_exclusive_group(required=True)
@@ -233,6 +249,10 @@ def main(argv=None) -> int:
             http = pf.Http(cfg, log, offline=a.offline)
             raw = pf.extract_product_from_html(http.get(a.url), a.url)
         brief = pf.get_brief(raw, cfg, log, offline=a.offline)
+        if a.demo:
+            a.archetype, note = demo_archetype(brief, a.archetype)
+            if note:
+                log.warn(note)
         job_id = f"{slugify(brief['product']['name'], 24)}-{dt.datetime.now():%H%M%S}"
         res = build_video(brief, cfg, job_id, archetype=a.archetype, seed=a.seed, voice_mode=a.voice, out_root=a.out,
                           fmt_name=a.fmt, allow_voice_change=a.allow_voice_change, deliver_output=not a.no_deliver)
