@@ -1,0 +1,8 @@
+Vertical 9:16, 8 segundos, português brasileiro.
+[Cenas 2 e 3] Continue a partir do último frame da cena anterior.
+[Cenas 2 e 3] Preserve exatamente a identidade da modelo, aparência facial, cabelo, roupa, ambiente, iluminação, produto e posição inicial mostrados na referência.
+Modelo: MODEL_001 (imagem de referência anexada). Voz: conforme voice_profile.json.
+Produto (PRODUCT_LOCK): {cor, quantidade, formato, embalagem}.
+Ambiente / iluminação / câmera: {da visual_bible}.
+Ação: {do script}.
+Fala (natural, comercial moderada): "{fala}"
