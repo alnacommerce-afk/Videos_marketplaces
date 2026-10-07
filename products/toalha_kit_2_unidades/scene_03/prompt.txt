@@ -1,0 +1,55 @@
+# Prompt de cena — toalha_kit_2_unidades · CENA 3 de 3
+ESTADO: WAITING_FOR_SCENE_02_LAST_FRAME
+NÃO USAR AINDA: gere a cena 2, salve o último frame em scene_02/last_frame.png e só então use este prompt.
+
+CARREGAR ESTAS REFERÊNCIAS NO FLOW ANTES DE GERAR (em ordem de prioridade):
+1. assets/model/MODEL_001/reference.png  → IDENTIDADE da modelo (obrigatória)
+2. products/toalha_kit_2_unidades/scene_02/last_frame.png  → CONTINUIDADE da cena
+3. products/toalha_kit_2_unidades/references/toalha_kit_2_unidades.png  → IDENTIDADE do produto
+Conflito: identidade da modelo = reference.png; continuidade = último frame; produto = referência do produto.
+A referência do produto nunca altera a identidade da modelo.
+
+=== PROMPT PARA O FLOW ===
+
+OBJETIVO DA CENA:
+Desejo + CTA sutil: reforçar toque macio e alta absorção e convidar a dar uma olhada, sem urgência.
+
+REFERÊNCIAS:
+Imagem 1: a apresentadora (MODEL_001/reference.png), referência da IDENTIDADE da pessoa. Imagem 2: último frame da cena anterior, referência da CONTINUIDADE. Imagem 3: o kit de toalhas, referência da IDENTIDADE do produto.
+
+MODELO:
+A mesma apresentadora da Imagem 1: exatamente o mesmo rosto, cabelo, tom de pele, idade aparente e proporções. Manter o microfone de lapela Hollyland preto preso na gola, sem remover nem alterar. Roupa (a mesma em todas as cenas): camisa branca de manga longa com as mangas dobradas e calça preta justa, como na referência.
+
+PRODUTO:
+Kit com 2 toalhas felpudas, exatamente como na imagem de referência do produto: uma azul/turquesa, com faixa em jacquard de rosas em tom claro quase branco, e uma bege, com faixa em jacquard de rosas em tom areia/marrom, ambas na extremidade. Dobradas, a azul/turquesa fica por cima da bege. Não alterar cores, quantidade (sempre 2 toalhas), estampa, formato ou aparência. Não inventar detalhes que não estejam na referência.
+
+AMBIENTE:
+Banheiro claro e arrumado, azulejos claros e bancada com prateleira discreta, o mesmo banheiro em todas as cenas. Sem outras toalhas ou produtos.
+
+AÇÃO:
+Segura as duas toalhas em destaque à frente do peito, sorri para a câmera e fecha com o convite.
+
+CÂMERA:
+Medium shot estável, as duas toalhas bem visíveis.
+
+ILUMINAÇÃO:
+Luz natural suave e uniforme, tom neutro-quente, sem sombras duras no rosto, a mesma nas 3 cenas.
+
+EXPRESSÃO:
+Sorriso simpático e seguro, sem exagero.
+
+FALA:
+Em português brasileiro, tom natural: "Se você quer um kit de toalhas macias e com alta absorção, vale a pena dar uma olhada."
+Voz (idêntica em todas as cenas): a mesma apresentadora, mesma voz, mesmo timbre, mesmo sotaque, mesma personalidade, velocidade semelhante, interpretação natural de pessoa real apresentando um produto.
+
+CONTINUIDADE:
+Use o último frame da cena anterior (scene_02/last_frame.png, Imagem 2) como referência primária de CONTINUIDADE para o primeiro momento desta cena. A posição corporal, posição das mãos, produto, enquadramento, direção do olhar, iluminação, roupa, cenário e identidade facial devem permanecer visualmente consistentes com esse frame. Só depois do primeiro momento a ação avança, como a mesma gravação contínua. Terminar com as duas toalhas em destaque à frente do peito, sorriso para a câmera.
+
+FORMATO:
+Vertical 9:16.
+
+DURAÇÃO:
+8 segundos.
+
+RESTRIÇÕES:
+A identidade da pessoa vem somente da Imagem 1; o produto nunca altera o rosto ou a aparência da apresentadora. Não afirmar nada além do que está na FALA: sem preço, desconto, urgência, marca, durabilidade ou tempo de secagem. A imagem do produto é um infográfico: usar apenas a aparência das toalhas; não reproduzir textos, ícones, selos, setas de medida, molduras nem o fundo branco do infográfico. Somente português brasileiro. Sem texto sobreposto, sem logotipos inventados, sem movimento de câmera brusco, sem zoom excessivo.

@@ -1,0 +1,43 @@
+{
+  "product_id": "toalha_kit_2_unidades",
+  "_fonte": "Dados confirmados pelo usuário e conferidos com a imagem de referência (references/toalha_kit_2_unidades.png, em 2026-10-07). Nada além disto pode ser afirmado.",
+  "nome": "Kit de toalhas com 2 unidades",
+  "categoria": "BANHO",
+  "descricao": "Kit com 2 toalhas (turquesa e bege), com faixa em jacquard de rosas",
+  "cor": "azul/turquesa e bege",
+  "quantidade": "2 unidades (kit)",
+  "tamanho": "160 cm x 75 cm",
+  "material": "100% algodão",
+  "gramatura": "450 g",
+  "caracteristicas": [
+    "Kit com 2 unidades",
+    "100% algodão",
+    "450 g de gramatura",
+    "160 cm x 75 cm",
+    "Acabamento em jacquard com flores",
+    "Costura reforçada",
+    "Cores: azul/turquesa e bege"
+  ],
+  "beneficios": [
+    "Alta absorção",
+    "Toque macio"
+  ],
+  "preco": "",
+  "oferta": "",
+  "publico": "não informado",
+  "imagens_referencia": [
+    "references/toalha_kit_2_unidades.png"
+  ],
+  "informacoes_importantes": [
+    "Não alterar cores, quantidade (sempre 2), estampa, formato ou aparência das toalhas",
+    "A imagem de referência é um INFOGRÁFICO: usar só a aparência das toalhas; nunca reproduzir textos, ícones, selos, setas de medida ou o fundo do infográfico",
+    "A imagem também diz 'alta durabilidade', 'excelente qualidade de acabamento' e 'seca o corpo com mais eficiência'. Isso NÃO consta nos dados confirmados pelo usuário: não usar em roteiro ou fala sem confirmação",
+    "Não informado: preço, oferta, estoque, marca, tempo de secagem"
+  ],
+  "aparencia_visual_na_referencia": {
+    "kit": "2 toalhas dobradas e empilhadas: a azul/turquesa por cima e a bege por baixo",
+    "toalha_azul_turquesa": "felpuda, faixa em jacquard de rosas em tom claro (quase branco) na extremidade",
+    "toalha_bege": "felpuda, faixa em jacquard de rosas em tom areia/marrom na extremidade",
+    "medidas_na_referencia": "160 cm (comprimento) x 75 cm (largura)"
+  }
+}

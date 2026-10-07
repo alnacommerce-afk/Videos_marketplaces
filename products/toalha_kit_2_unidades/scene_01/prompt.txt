@@ -1,0 +1,53 @@
+# Prompt de cena — toalha_kit_2_unidades · CENA 1 de 3
+ESTADO: READY_TO_GENERATE
+
+CARREGAR ESTAS REFERÊNCIAS NO FLOW ANTES DE GERAR (em ordem de prioridade):
+1. assets/model/MODEL_001/reference.png  → IDENTIDADE da modelo (obrigatória)
+2. products/toalha_kit_2_unidades/references/toalha_kit_2_unidades.png  → IDENTIDADE do produto
+Conflito: identidade da modelo = reference.png; continuidade = último frame; produto = referência do produto.
+A referência do produto nunca altera a identidade da modelo.
+
+=== PROMPT PARA O FLOW ===
+
+OBJETIVO DA CENA:
+Hook + apresentação + principal benefício: mostrar que é um kit com 2 toalhas, com jacquard de flores, 100% algodão e toque macio.
+
+REFERÊNCIAS:
+Imagem 1: a apresentadora (MODEL_001/reference.png), referência da IDENTIDADE da pessoa. Imagem 2: o kit de toalhas, referência da IDENTIDADE do produto.
+
+MODELO:
+A mesma apresentadora da Imagem 1: exatamente o mesmo rosto, cabelo, tom de pele, idade aparente e proporções. Manter o microfone de lapela Hollyland preto preso na gola, sem remover nem alterar. Roupa (a mesma em todas as cenas): camisa branca de manga longa com as mangas dobradas e calça preta justa, como na referência.
+
+PRODUTO:
+Kit com 2 toalhas felpudas, exatamente como na imagem de referência do produto: uma azul/turquesa, com faixa em jacquard de rosas em tom claro quase branco, e uma bege, com faixa em jacquard de rosas em tom areia/marrom, ambas na extremidade. Dobradas, a azul/turquesa fica por cima da bege. Não alterar cores, quantidade (sempre 2 toalhas), estampa, formato ou aparência. Não inventar detalhes que não estejam na referência.
+
+AMBIENTE:
+Banheiro claro e arrumado, azulejos claros e bancada com prateleira discreta, o mesmo banheiro em todas as cenas. Sem outras toalhas ou produtos.
+
+AÇÃO:
+Já em movimento, a apresentadora entra no banheiro com as duas toalhas dobradas e as apresenta à câmera, segurando-as à frente do peito.
+
+CÂMERA:
+Medium shot (cintura para cima), câmera na altura do peito, aproximação discreta. Movimentos suaves.
+
+ILUMINAÇÃO:
+Luz natural suave e uniforme, tom neutro-quente, sem sombras duras no rosto, a mesma nas 3 cenas.
+
+EXPRESSÃO:
+Sorriso simpático e confiante, olhando para a câmera, energia comercial moderada.
+
+FALA:
+Em português brasileiro, tom natural: "Olha esse kit com duas toalhas, com acabamento em jacquard com flores. São cem por cento algodão e têm toque macio."
+Voz (idêntica em todas as cenas): a mesma apresentadora, mesma voz, mesmo timbre, mesmo sotaque, mesma personalidade, velocidade semelhante, interpretação natural de pessoa real apresentando um produto.
+
+CONTINUIDADE:
+Terminar em posição estável: as duas toalhas à frente do peito, as duas mãos visíveis e paradas, olhar na câmera, para que a próxima cena parta exatamente desse momento.
+
+FORMATO:
+Vertical 9:16.
+
+DURAÇÃO:
+8 segundos.
+
+RESTRIÇÕES:
+A identidade da pessoa vem somente da Imagem 1; o produto nunca altera o rosto ou a aparência da apresentadora. Não afirmar nada além do que está na FALA: sem preço, desconto, urgência, marca, durabilidade ou tempo de secagem. A imagem do produto é um infográfico: usar apenas a aparência das toalhas; não reproduzir textos, ícones, selos, setas de medida, molduras nem o fundo branco do infográfico. Somente português brasileiro. Sem texto sobreposto, sem logotipos inventados, sem movimento de câmera brusco, sem zoom excessivo.
