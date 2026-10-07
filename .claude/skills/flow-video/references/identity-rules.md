@@ -15,16 +15,73 @@ aparente, proporções corporais, aparência e estilo geral. Deve parecer a MESM
 Roupa: pode mudar para combinar com produto e ambiente (praia → roupa de praia; cozinha → casual;
 cosmético → casual/elegante), de forma intencional e coerente, sem alterar a identidade.
 
-Se MODEL_001 ainda não existe ou não tem `approved.json`: não invente uma. Avise o usuário e
-ajude a criar e aprovar a modelo primeiro.
+### reference.png é a fonte de verdade
+`assets/model/MODEL_001/reference.png` é a referência principal da identidade e entra em todas as
+cenas. `reference_front.png`, `reference_half_body.png` e `reference_full_body.png` **não** são novas
+identidades: são complementares da MESMA pessoa, criadas a partir da `reference.png` e só quando
+necessárias. Se uma complementar conflitar visualmente com `reference.png`, a `reference.png` vence
+(e a complementar deve ser descartada ou regenerada).
 
-## Voz
-Asset permanente em `voice_profile.json`. Preservar timbre, sotaque, idioma, personalidade,
-velocidade, energia, estilo de fala, pronúncia e o gênero definido no perfil. Idioma: português
-brasileiro. Se a ferramenta oferecer voice ID, voice reference, clonagem ou referência de áudio,
-reutilize sempre o mesmo identificador. Voz oficial configurada tem prioridade máxima. Se a
-ferramenta não conseguir usá-la: **não substituir em silêncio**; sinalizar
-`VOICE_IDENTITY_NOT_AVAILABLE` e interromper a geração até haver solução válida.
+Se MODEL_001 não existe ou `approved` é `false`: não invente uma. Execute `/setup-model` (ver
+`model-onboarding.md`).
+
+### MODEL LOCK
+Aprovada, MODEL_001 é um asset imutável de identidade. `model_identity.md` consolida a descrição
+(MODEL_ID, aparência, cabelo, rosto, idade aparente, estilo, características visuais, regras de
+consistência) e registra: "Esta identidade não muda entre produtos."
+`/create-video` nunca usa outra modelo enquanto MODEL_001 estiver aprovada.
+
+## Voz (VOICE_001)
+A identidade vocal faz parte da identidade da MODEL_001. Prioridade: MODEL_001 + VOICE_001 +
+PRODUCT_LOCK. `voice_profile.json`:
+- `voice_id: "VOICE_001"`: **identificador interno do projeto**, não um ID do Google Flow.
+- `provider: "google_flow"` e `provider_voice_id: null`: o ID real do provedor, quando existir, vai
+  só em `provider_voice_id`. Nunca invente um.
+- `status: "pending"` até haver uma solução de voz verificada; `consistency_required: true`.
+
+Todo prompt de cena pede: português brasileiro; mesma apresentadora; mesma voz; mesmo timbre; mesmo
+sotaque; mesma personalidade; velocidade semelhante; interpretação natural. O bloco de voz é
+idêntico nas 3 cenas. Não citar ElevenLabs nem outra ferramenta nos prompts.
+
+### Requisito x capacidade
+- **VOICE_REQUIREMENT:** a mesma voz em todas as cenas (requisito fixo do projeto).
+- **VOICE_CAPABILITY:** o que o Flow efetivamente consegue fornecer (voice ID persistente? referência
+  de áudio? só descrição textual?). Registre em `voice_profile.json` (`provider_voice_id`, `status`).
+Nunca afirme que o Flow garante a mesma voz sem isso estar tecnicamente disponível. Sem voice ID
+persistente, a capacidade é insuficiente para o requisito: mostre `VOICE_CONSISTENCY_NOT_GUARANTEED`
+e marque `REJECTED` (a menos que o usuário verifique e confirme a consistência cena a cena).
+
+### Voz diferente NUNCA é resultado aceitável
+- Falta de `provider_voice_id` **não impede** criar roteiro, prompts, modelo ou o fluxo manual (esses
+  passos seguem), mas **não garante** consistência.
+- Na validação, a voz precisa soar como a mesma apresentadora nas 3 cenas. Se não soar, ou se não
+  houver como verificá-lo, registre `VOICE_MISMATCH` e `VOICE_CONSISTENCY_NOT_GUARANTEED`, marque a
+  cena `REJECTED` e **não aprove o vídeo final** (`final.mp4` fica como rascunho reprovado).
+- Nunca aceite, em silêncio, uma voz diferente "porque ficou boa".
+
+### Preparado para voz persistente no futuro
+A skill não depende de nenhuma ferramenta de voz específica. Quando houver uma solução (voice ID do
+Flow, clonagem, referência de áudio ou outra), basta preencher `provider`, `provider_voice_id` e
+`status: "active"` em `voice_profile.json` e acrescentar a referência de áudio aos itens "carregar
+no Flow". Prompts, fluxo e validação continuam iguais. Não adicione nenhuma agora.
+
+## PRODUCT_CLAIM_LOCK
+Roteiro, fala e legendas só podem conter:
+1. características fornecidas pelo usuário;
+2. informações presentes no `product.json`;
+3. informações claramente visíveis na referência do produto (ex.: cor bege);
+4. benefícios explicitamente informados.
+
+Faltou informação → não invente; use abordagem neutra. Errado (sem a informação): "Essa toalha tem
+ótima absorção." Certo: "Olha essa toalha de banho." / "Uma opção prática para o dia a dia."
+Nunca criar números, porcentagens, propriedades, resultados, materiais, tamanhos, durabilidade,
+qualidade, certificações, descontos, preços ou urgência/escassez sem dado fornecido. Adjetivos
+de qualidade (macia, absorvente, resistente, premium, duradoura) são alegações e seguem a mesma regra.
+
+Sem benefícios informados, o roteiro se apoia no que é demonstrável e visível: o que o produto é,
+sua cor, o ambiente de uso, a ação de segurar/mostrar/usar. Cada linha do `script.md` indica a
+fonte da afirmação (`product.json`, referência visual ou usuário). Violação =
+`PRODUCT_CLAIM_VIOLATION`.
 
 ## Produto (PRODUCT_LOCK)
 Antes de gerar, criar `products/PRODUCT_ID/product.json` (modelo em `assets/templates/product.json`)

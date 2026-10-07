@@ -1,0 +1,16 @@
+{
+  "voice_id": "VOICE_001",
+  "_note": "VOICE_001 é só o identificador interno do projeto. NÃO é um ID do Google Flow. O ID real do provedor, quando existir, vai em provider_voice_id.",
+  "provider": "google_flow",
+  "provider_voice_id": null,
+  "language": "pt-BR",
+  "gender": "female",
+  "status": "pending",
+  "consistency_required": true,
+  "style": {
+    "personality": "simpática, confiante, acessível",
+    "pace": "natural, ritmo médio",
+    "energy": "comercial moderada",
+    "accent": "brasileiro neutro"
+  }
+}

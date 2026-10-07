@@ -11,6 +11,10 @@ CONTEXTO > BELEZA VISUAL. Nunca aleatório.
 ## Formato
 Vertical 9:16, ~24s, 3 cenas de ~8s.
 
+> Os exemplos de fala abaixo são só de tom. Antes de usar qualquer um, passe-o pelo
+> PRODUCT_CLAIM_LOCK: frases com benefício ou disponibilidade só entram se houver dado que as sustente.
+> Sem dados: "Olha essa toalha de banho.", "Uma opção prática para o dia a dia.", "Se curtiu, vale dar uma olhada."
+
 ## Cena 1 — Hook + apresentação
 Sem introdução longa; produto aparece logo; modelo chama atenção; gancho ligado ao benefício ou
 desejo. Exemplos: "Olha o que eu encontrei para deixar sua cozinha muito mais prática." /

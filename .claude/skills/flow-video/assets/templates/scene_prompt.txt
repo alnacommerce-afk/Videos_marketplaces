@@ -1,8 +1,67 @@
-Vertical 9:16, 8 segundos, português brasileiro.
-[Cenas 2 e 3] Continue a partir do último frame da cena anterior.
-[Cenas 2 e 3] Preserve exatamente a identidade da modelo, aparência facial, cabelo, roupa, ambiente, iluminação, produto e posição inicial mostrados na referência.
-Modelo: MODEL_001 (imagem de referência anexada). Voz: conforme voice_profile.json.
-Produto (PRODUCT_LOCK): {cor, quantidade, formato, embalagem}.
-Ambiente / iluminação / câmera: {da visual_bible}.
-Ação: {do script}.
-Fala (natural, comercial moderada): "{fala}"
+# Prompt de cena — {PRODUCT_ID} · CENA {N} de 3
+# O bloco abaixo da linha "=== PROMPT PARA O FLOW ===" é o único texto a colar no Flow.
+# Instruções internas ficam acima dela e nunca entram no prompt cinematográfico.
+
+[cenas 2 e 3] ESTADO: se o último frame da cena anterior não existir, escreva aqui
+WAITING_FOR_SCENE_0{N-1}_LAST_FRAME e NÃO entregue este prompt como pronto.
+
+CARREGAR ESTAS REFERÊNCIAS NO FLOW ANTES DE GERAR (em ordem de prioridade):
+1. assets/model/MODEL_001/reference.png               → IDENTIDADE da modelo (obrigatória)
+2. [cenas 2 e 3] products/{PRODUCT_ID}/scene_0{N-1}/last_frame.png → CONTINUIDADE da cena
+3. products/{PRODUCT_ID}/references/{imagem do produto} → IDENTIDADE do produto
+Conflito: identidade da modelo = reference.png; continuidade = último frame; produto = referência
+do produto. A referência do produto nunca altera a identidade da modelo.
+
+=== PROMPT PARA O FLOW ===" é o único texto a colar no Flow.
+# Instruções internas ficam acima dela e nunca entram no prompt cinematográfico.
+
+CARREGAR ESTAS REFERÊNCIAS NO FLOW ANTES DE GERAR:
+1. assets/model/MODEL_001/reference.png
+2. products/{PRODUCT_ID}/references/{imagem do produto}
+3. [cenas 2 e 3] products/{PRODUCT_ID}/scene_0{N-1}/last_frame.png
+
+=== PROMPT PARA O FLOW ===
+
+OBJETIVO DA CENA:
+{cena 1: hook + apresentação + principal benefício | cena 2: demonstração + benefícios | cena 3: benefício + desejo + CTA sutil}
+
+REFERÊNCIAS:
+Imagem 1: a apresentadora (MODEL_001/reference.png), referência da IDENTIDADE da pessoa. [Cenas 2 e 3 — Imagem 2: último frame da cena anterior, referência da CONTINUIDADE.] Imagem {final}: o produto, referência da IDENTIDADE do produto.
+
+MODELO:
+A mesma apresentadora da imagem de referência: exatamente o mesmo rosto, cabelo, tom de pele, idade aparente e proporções. Roupa: {roupa}.
+
+PRODUTO:
+{nome, cor, quantidade, formato, embalagem, textura — conforme PRODUCT_LOCK}. Exatamente como na imagem de referência, sem alterar cor, quantidade ou embalagem.
+
+AMBIENTE:
+{ambiente coerente com o uso do produto}
+
+AÇÃO:
+{ação do script; cena 1 começa já em ação natural}
+
+CÂMERA:
+{enquadramento e movimento suave}
+
+ILUMINAÇÃO:
+{da visual bible}
+
+EXPRESSÃO:
+{expressão e energia comercial moderada}
+
+FALA:
+Em português brasileiro, tom natural: "{fala da cena — somente frases com fonte no PRODUCT_CLAIM_LOCK}"
+Voz (idêntica em todas as cenas): a mesma apresentadora, mesma voz, mesmo timbre, mesmo sotaque, mesma personalidade, velocidade semelhante, interpretação natural de pessoa real apresentando um produto.
+
+CONTINUIDADE:
+[cena 1] Terminar em uma posição estável (corpo, mãos e produto visíveis e parados) que permita continuar na cena seguinte.
+[cenas 2 e 3] Use o último frame da cena anterior (scene_0{N-1}/last_frame.png, Imagem 2) como referência primária de CONTINUIDADE para o primeiro momento desta cena. A posição corporal, posição das mãos, produto, enquadramento, direção do olhar, iluminação, roupa, cenário e identidade facial devem permanecer visualmente consistentes com esse frame. Só depois do primeiro momento a ação avança, como a mesma gravação contínua.
+
+FORMATO:
+Vertical 9:16.
+
+DURAÇÃO:
+8 segundos.
+
+RESTRIÇÕES:
+A identidade da pessoa vem somente da Imagem 1; o produto nunca altera o rosto ou a aparência da apresentadora. Não afirmar características, benefícios, números, materiais, preços ou urgência que não estejam nos dados do produto. Não trocar a pessoa, a voz, o idioma (somente português brasileiro) nem as características do produto. Sem texto sobreposto inventado, sem logotipos inventados, sem movimento de câmera brusco.
