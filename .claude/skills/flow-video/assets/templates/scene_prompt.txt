@@ -29,7 +29,7 @@ REFERÊNCIAS:
 Imagem 1: a apresentadora (MODEL_001/reference.png), referência da IDENTIDADE da pessoa. [Cenas 2 e 3 — Imagem 2: último frame da cena anterior, referência da CONTINUIDADE.] Imagem {final}: o produto, referência da IDENTIDADE do produto.
 
 MODELO:
-A mesma apresentadora da imagem de referência: exatamente o mesmo rosto, cabelo, tom de pele, idade aparente e proporções. Roupa: {roupa}.
+A mesma apresentadora da imagem de referência: exatamente o mesmo rosto, cabelo, tom de pele, idade aparente e proporções. Manter o microfone de lapela Hollyland preto preso na gola, sem remover nem alterar. Roupa: {roupa}.
 
 PRODUTO:
 {nome, cor, quantidade, formato, embalagem, textura — conforme PRODUCT_LOCK}. Exatamente como na imagem de referência, sem alterar cor, quantidade ou embalagem.

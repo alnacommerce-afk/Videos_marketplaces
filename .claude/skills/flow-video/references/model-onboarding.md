@@ -68,9 +68,10 @@ independente, cada uma sairia com uma pessoa diferente.
 
 ```
 Esta é a MESMA pessoa da imagem de referência. Preserve exatamente a identidade da pessoa
-apresentada na referência: o mesmo rosto, olhos, sobrancelhas, nariz, boca, covinhas, a pinta na
-bochecha esquerda, o mesmo cabelo (cor, comprimento, ondulação, repartição), tom de pele, idade
-aparente, proporções corporais e a mesma roupa. Não criar outra pessoa, nem uma pessoa parecida.
+apresentada na referência: o mesmo rosto, olhos, sobrancelhas, nariz, boca, os mesmos traços
+marcantes descritos em `model_identity.md`, o mesmo cabelo (cor, comprimento, ondulação), tom de
+pele, idade aparente, proporções corporais, a mesma roupa e o microfone de lapela na gola. Não criar
+outra pessoa, nem uma pessoa parecida.
 ```
 
 Depois do bloco, acrescente o enquadramento:
