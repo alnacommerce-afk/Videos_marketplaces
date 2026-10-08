@@ -1,67 +1,55 @@
 # Prompt de cena — {PRODUCT_ID} · CENA {N} de 3
-# O bloco abaixo da linha "=== PROMPT PARA O FLOW ===" é o único texto a colar no Flow.
-# Instruções internas ficam acima dela e nunca entram no prompt cinematográfico.
+ESTADO: {cena 1: READY | cenas 2 e 3: READY (executar após o último frame da cena anterior; WAITING_FOR_SCENE_0{N-1}_LAST_FRAME até lá)}
 
-[cenas 2 e 3] ESTADO: se o último frame da cena anterior não existir, escreva aqui
-WAITING_FOR_SCENE_0{N-1}_LAST_FRAME e NÃO entregue este prompt como pronto.
+ANEXAR NO FLOW (esta lista NÃO vai dentro do prompt):
+[cena 1]      Imagem 1 = FRAME_MESTRE: products/{PRODUCT_ID}/master_frame.png
+[cenas 2 e 3] Imagem 1 = último frame da cena anterior: products/{PRODUCT_ID}/scene_0{N-1}/last_frame.png   (CONTINUIDADE)
+              Imagem 2 = FRAME_MESTRE: products/{PRODUCT_ID}/master_frame.png   (IDENTIDADE; se o Flow aceitar só uma imagem, use apenas o último frame)
+Não anexe a foto original do produto nem a reference.png da modelo: o FRAME_MESTRE já contém os dois.
 
-CARREGAR ESTAS REFERÊNCIAS NO FLOW ANTES DE GERAR (em ordem de prioridade):
-1. assets/model/MODEL_001/reference.png               → IDENTIDADE da modelo (obrigatória)
-2. [cenas 2 e 3] products/{PRODUCT_ID}/scene_0{N-1}/last_frame.png → CONTINUIDADE da cena
-3. products/{PRODUCT_ID}/references/{imagem do produto} → IDENTIDADE do produto
-Conflito: identidade da modelo = reference.png; continuidade = último frame; produto = referência
-do produto. A referência do produto nunca altera a identidade da modelo.
-
-=== PROMPT PARA O FLOW ===" é o único texto a colar no Flow.
-# Instruções internas ficam acima dela e nunca entram no prompt cinematográfico.
-
-CARREGAR ESTAS REFERÊNCIAS NO FLOW ANTES DE GERAR:
-1. assets/model/MODEL_001/reference.png
-2. products/{PRODUCT_ID}/references/{imagem do produto}
-3. [cenas 2 e 3] products/{PRODUCT_ID}/scene_0{N-1}/last_frame.png
-
-=== PROMPT PARA O FLOW ===
+=== PROMPT PARA O FLOW === (copie só o que vem abaixo; nada aqui dentro é caminho de arquivo)
 
 OBJETIVO DA CENA:
-{cena 1: hook + apresentação + principal benefício | cena 2: demonstração + benefícios | cena 3: benefício + desejo + CTA sutil}
+{cena 1: hook + apresentação + principal característica confirmada | cena 2: demonstração + características demonstráveis e confirmadas | cena 3: desejo/uso + CTA sutil}
 
 REFERÊNCIAS:
-Imagem 1: a apresentadora (MODEL_001/reference.png), referência da IDENTIDADE da pessoa. [Cenas 2 e 3 — Imagem 2: último frame da cena anterior, referência da CONTINUIDADE.] Imagem {final}: o produto, referência da IDENTIDADE do produto.
+[cena 1] A imagem anexada é o FRAME_MESTRE: a referência visual principal. Ela mostra a apresentadora e o produto, o ambiente, a roupa e a iluminação desta cena.
+[cenas 2 e 3] Imagem 1: último frame da cena anterior, referência de CONTINUIDADE. Imagem 2: o FRAME_MESTRE, referência de IDENTIDADE da apresentadora e do produto.
 
 MODELO:
-A mesma apresentadora da imagem de referência: exatamente o mesmo rosto, cabelo, tom de pele, idade aparente e proporções. Manter o microfone de lapela Hollyland preto preso na gola, sem remover nem alterar. Roupa: {roupa}.
+Preservar exatamente a apresentadora do FRAME_MESTRE: mesmo rosto, cabelo, tom de pele, idade aparente, proporções e roupa. Manter o microfone de lapela Hollyland preto preso como no FRAME_MESTRE, sem remover nem alterar.
 
 PRODUTO:
-{nome, cor, quantidade, formato, embalagem, textura — conforme PRODUCT_LOCK}. Exatamente como na imagem de referência, sem alterar cor, quantidade ou embalagem.
+{descrição extraída do produto atual: quantidade, cores (qual item tem qual cor), formato, material, textura, estampa, acabamento, detalhes}. Preservar exatamente como no FRAME_MESTRE. Não alterar cores, quantidade, estampa, formato ou aparência. Não inventar logos, marcas ou detalhes.
 
 AMBIENTE:
-{ambiente coerente com o uso do produto}
+Preservar o ambiente do FRAME_MESTRE: {ambiente}. O mesmo nas 3 cenas, sem objetos extras, produtos concorrentes ou outras unidades do produto.
 
 AÇÃO:
-{ação do script; cena 1 começa já em ação natural}
+{ação desta cena; cena 1 parte da composição do FRAME_MESTRE, já em movimento}
 
 CÂMERA:
 {enquadramento e movimento suave}
 
 ILUMINAÇÃO:
-{da visual bible}
+Preservar a iluminação do FRAME_MESTRE: {da visual bible}. A mesma nas 3 cenas.
 
 EXPRESSÃO:
 {expressão e energia comercial moderada}
 
 FALA:
-Em português brasileiro, tom natural: "{fala da cena — somente frases com fonte no PRODUCT_CLAIM_LOCK}"
+Em português brasileiro, tom natural: "{18 a 24 palavras, só afirmações confirmadas}"
 Voz (idêntica em todas as cenas): a mesma apresentadora, mesma voz, mesmo timbre, mesmo sotaque, mesma personalidade, velocidade semelhante, interpretação natural de pessoa real apresentando um produto.
 
 CONTINUIDADE:
-[cena 1] Terminar em uma posição estável (corpo, mãos e produto visíveis e parados) que permita continuar na cena seguinte.
-[cenas 2 e 3] Use o último frame da cena anterior (scene_0{N-1}/last_frame.png, Imagem 2) como referência primária de CONTINUIDADE para o primeiro momento desta cena. A posição corporal, posição das mãos, produto, enquadramento, direção do olhar, iluminação, roupa, cenário e identidade facial devem permanecer visualmente consistentes com esse frame. Só depois do primeiro momento a ação avança, como a mesma gravação contínua.
+[cena 1] Começar exatamente da composição do FRAME_MESTRE e terminar em posição estável (corpo, mãos e produto visíveis e parados), para a próxima cena partir desse momento.
+[cenas 2 e 3] Use o último frame da cena anterior (Imagem 1) como referência primária para o primeiro momento desta cena. A posição corporal, posição das mãos, produto, enquadramento, direção do olhar, iluminação, roupa, cenário e identidade facial devem permanecer visualmente consistentes com esse frame. O FRAME_MESTRE (Imagem 2) mantém a identidade da apresentadora e do produto. Só depois do primeiro momento a ação avança, como a mesma gravação contínua.
 
 FORMATO:
 Vertical 9:16.
 
 DURAÇÃO:
-8 segundos.
+Aproximadamente 8 segundos.
 
 RESTRIÇÕES:
-A identidade da pessoa vem somente da Imagem 1; o produto nunca altera o rosto ou a aparência da apresentadora. Não afirmar características, benefícios, números, materiais, preços ou urgência que não estejam nos dados do produto. Não trocar a pessoa, a voz, o idioma (somente português brasileiro) nem as características do produto. Sem texto sobreposto inventado, sem logotipos inventados, sem movimento de câmera brusco.
+O produto nunca altera o rosto ou a aparência da apresentadora, e a apresentadora nunca altera a aparência do produto. Não afirmar nada além do que está na FALA. Somente português brasileiro. Sem texto sobreposto, sem ícones, selos ou molduras, sem logotipos inventados, sem movimento de câmera brusco, sem zoom excessivo.

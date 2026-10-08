@@ -14,22 +14,23 @@ organiza os arquivos; você executa no Flow.
 4. **`/approve-model`**: `approved.json` vira `true` com a data. A partir daí a modelo é fixa.
 
 ## Para cada produto
-5. **Adicionar o produto** em `products/PRODUCT_ID/`: fotos em `references/` e, se quiser, um
-   `product.json` (nome, cor, quantidade, benefícios, preço). Ex.: `products/toalha_bege/`.
-6. **`/create-video produto=toalha_bege`**: o Claude valida a MODEL_001, cria `script.md`,
-   `visual_bible.md` e `scene_01..03/prompt.txt`. Você não escreve prompts.
-   Regra: o roteiro só usa o que está no `product.json`, o que você informou ou o que é visível
-   na foto (PRODUCT_CLAIM_LOCK). Sem benefícios informados, a fala é neutra. Quer destacar
-   absorção, maciez, material? Informe, senão ela não aparece.
-7. **Gerar a Cena 1 no Flow** (checklist: `docs/flow-generation-checklist.md`): carregue as referências listadas no topo de `scene_01/prompt.txt`
-   (MODEL_001 + produto), cole o trecho "PROMPT PARA O FLOW". Salve em `scene_01/output.mp4`.
+5. **Novo produto:** diga "quero um vídeo para um novo produto: <nome>" (ou `/new-product <nome>`).
+   Sem imagem do produto, o Claude para e mostra o link de upload
+   (`https://github.com/<dono>/<repo>/upload/<branch>/products/_inbox`). Arraste a imagem, faça o
+   "Commit changes" na mesma branch e responda **ENVIEI**. Você não descreve o produto.
+6. O Claude analisa a imagem, **cria o FRAME_MESTRE** (modelo + produto numa só imagem), valida, cria
+   `product.json`, `script.md`, `visual_bible.md` e os 3 prompts, remove a imagem original do Git e
+   entrega: o FRAME_MESTRE (`products/<produto>/master_frame.png`), os 3 prompts e `READY_TO_GENERATE`.
+   Só entra o que a imagem confirma (PRODUCT_CLAIM_LOCK).
+7. **Gerar a Cena 1 no Flow** (checklist: `docs/flow-generation-checklist.md`): anexe **somente** o
+   `master_frame.png`, cole o prompt da Cena 1 e salve em `scene_01/output.mp4`.
 8. **Salvar o último frame** como `scene_01/last_frame.png` (o Claude extrai com ffmpeg se você
    mandar o vídeo, ou use "salvar frame" no Flow).
 9. **Gerar a Cena 2** (sem `scene_01/last_frame.png` ela fica em `WAITING_FOR_SCENE_01_LAST_FRAME`):
-   carregue MODEL_001 `reference.png` + `scene_01/last_frame.png` + produto. Salve
+   anexe `scene_01/last_frame.png` (continuidade) e, se o Flow aceitar, o `master_frame.png`. Salve
    `scene_02/output.mp4`.
 10. **Salvar o último frame** da Cena 2 em `scene_02/last_frame.png`.
-11. **Gerar a Cena 3**: MODEL_001 + produto + `scene_02/last_frame.png`. Salve `scene_03/output.mp4`.
+11. **Gerar a Cena 3**: `scene_02/last_frame.png` e, se aceitar, o `master_frame.png`. Salve `scene_03/output.mp4`.
 12. **Unir os vídeos**: peça ao Claude para juntar as 3 cenas em `final/final.mp4`
     (`ffmpeg` concat) e validar modelo, voz, produto e continuidade.
 

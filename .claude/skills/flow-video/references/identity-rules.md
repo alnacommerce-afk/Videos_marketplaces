@@ -16,8 +16,9 @@ Roupa: pode mudar para combinar com produto e ambiente (praia → roupa de praia
 cosmético → casual/elegante), de forma intencional e coerente, sem alterar a identidade.
 
 ### reference.png é a fonte de verdade
-`assets/model/MODEL_001/reference.png` é a referência principal da identidade e entra em todas as
-cenas. `reference_front.png`, `reference_half_body.png` e `reference_full_body.png` **não** são novas
+`assets/model/MODEL_001/reference.png` é a referência principal da identidade. Ela **nunca é apagada**
+e é usada para criar o FRAME_MESTRE de cada produto; no Flow, a identidade da modelo vem do
+FRAME_MESTRE (que o Flow recebe no lugar da `reference.png` e da foto do produto). `reference_front.png`, `reference_half_body.png` e `reference_full_body.png` **não** são novas
 identidades: são complementares da MESMA pessoa, criadas a partir da `reference.png` e só quando
 necessárias. Se uma complementar conflitar visualmente com `reference.png`, a `reference.png` vence
 (e a complementar deve ser descartada ou regenerada).

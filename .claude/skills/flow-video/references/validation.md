@@ -1,5 +1,17 @@
 # Validação e rejeição
 
+## Checklist antes de entregar (obrigatório; falha = não declarar READY)
+- [ ] MODEL_001 correta e aprovada · [ ] identidade da modelo preservada (rosto, cabelo, roupa, microfone)
+- [ ] produto correto · [ ] quantidade · [ ] cores · [ ] formato · [ ] textura · [ ] estampa
+- [ ] FRAME_MESTRE criado e validado contra `reference.png` e a imagem do produto (`master-frame.md`)
+- [ ] nenhum benefício, característica ou especificação inventados (PRODUCT_CLAIM_LOCK)
+- [ ] ambiente adequado · [ ] 3 cenas criadas · [ ] continuidade planejada (último frame nas cenas 2 e 3)
+- [ ] falas em português brasileiro · [ ] cada fala cabe em ~8 s (18 a 24 palavras) · [ ] formato 9:16
+- [ ] prompts sem caminhos de arquivo e só com FRAME_MESTRE (+ último frame), sem pedir a original nem a `reference.png`
+- [ ] nada reaproveitado de produto anterior · [ ] `product.json` com metadados (hash da original, data)
+- [ ] imagem original do produto removida do projeto/Git (`master-frame.md`) · [ ] MODEL_001 preservada
+Informação crítica ilegível ou ambígua: não invente, faça uma pergunta objetiva antes.
+
 ## Antes do /create-video (pré-checagem)
 - `assets/model/MODEL_001/` existe e tem `reference.png`?
 - `approved.json` tem `approved: true`?
@@ -24,6 +36,7 @@ Cada problema abaixo, quando detectado, marca a cena `REJECTED`. Registre o cód
 
 | Código | Quando |
 |---|---|
+| `MASTER_FRAME_NOT_APPROVED` | o FRAME_MESTRE não representa corretamente a modelo ou o produto (antes de qualquer cena) |
 | `MODEL_MISMATCH` | pessoa diferente da MODEL_001 (rosto, cabelo, pele, idade, proporções) |
 | `VOICE_MISMATCH` | voz diferente da apresentadora entre cenas |
 | `PRODUCT_MISMATCH` | produto alterado: cor, quantidade, formato, embalagem, logo, textura |
