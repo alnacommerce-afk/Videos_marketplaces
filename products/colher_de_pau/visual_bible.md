@@ -1,0 +1,11 @@
+# VISUAL BIBLE — colher_de_pau
+- MODEL_ID: MODEL_001 (aprovada em 2026-10-07; roupa-base da identidade, microfone na gola)
+- VOICE_ID: VOICE_001 (interno; o áudio é feito no Flow)
+- PRODUCT_ID: colher_de_pau (PRODUCT_LOCK: exatamente 5 colheres idênticas de madeira natural clara, 38 cm)
+- AMBIENTE: o do FRAME_MESTRE (ChatGPT): cozinha clara e aconchegante, prateleiras de madeira, planta, tábuas, panela escura com legumes no fogão, tomate/alho/salsinha em primeiro plano, pote branco com colheres de madeira ao fundo. Fica parado em todas as cenas.
+- ILUMINAÇÃO: luz natural quente e dourada de janela, suave
+- ESTILO: publicidade moderna para redes sociais, natural e confiável
+- ROUPA: camisa branca de manga longa com mangas dobradas + avental de linho bege (do frame); microfone de lapela preto redondo na gola
+- CÂMERA: medium shot FIXO, rosto sempre visível; sem close, cortes, fusões, transições ou sobreposições
+- COMPOSIÇÃO: mexendo a panela com 1 colher na mão esquerda; mão direita na alça da panela
+- REGRAS: sempre exatamente 1 colher na mão; as colheres do pote ao fundo não se mexem nem aumentam; cenário estático

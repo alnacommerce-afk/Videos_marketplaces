@@ -1,0 +1,58 @@
+# Prompt de cena — colher_de_pau · CENA 2 de 3
+ESTADO: READY (executar após o último frame da cena 1; WAITING_FOR_SCENE_01_LAST_FRAME até lá)
+NÃO EXECUTAR NO FLOW antes de gerar a cena 1 e salvar o último frame.
+
+COMO USAR NO FLOW (esta parte NÃO vai dentro do prompt):
+Modo: FRAMES TO VIDEO (quadro inicial). NÃO use Ingredients/imagem de referência: nesse modo o Flow cria outra pessoa.
+Primeiro quadro (start frame) = último frame da cena 1: products/colher_de_pau/scene_01/last_frame.png
+Não anexe a foto original do produto nem a reference.png da modelo.
+Confira: o primeiro quadro do vídeo gerado deve ser igual ao último frame da cena 1. Se for outra pessoa, rejeite (MODEL_MISMATCH).
+
+=== PROMPT PARA O FLOW === (copie só o que vem abaixo; nada aqui dentro é caminho de arquivo)
+
+OBJETIVO DA CENA:
+Demonstração: mostrar a colher de pau (concha oval, cabo longo e reto, veios da madeira) levantando-a da panela para a câmera e voltando a mexer.
+
+REFERÊNCIAS:
+O primeiro quadro do vídeo é o último frame da cena anterior (modo Frames to Video, quadro inicial). O vídeo continua exatamente a partir desse quadro: mesma apresentadora, mesma roupa, mesmo cenário e a mesma colher. A apresentadora não é substituída nem redesenhada.
+
+MODELO:
+A apresentadora é a mulher que aparece no primeiro quadro: cabelo castanho escuro, ondulado, até os ombros; camisa branca de manga longa com as mangas dobradas, avental de linho bege por cima; microfone de lapela preto, redondo, preso na gola. Manter exatamente esse visual do início ao fim. Não trocar de pessoa, de cabelo nem de roupa.
+
+PRODUTO:
+Uma colher de pau de madeira natural clara, com concha oval, cabo longo, reto e cilíndrico, veios da madeira visíveis, sem logo, sem texto e sem estampa, segurada na mão da apresentadora e usada para mexer a panela. Preservar exatamente como no primeiro quadro. Em todos os quadros do vídeo há sempre exatamente 1 colher na mão da apresentadora: ela não pega, não troca nem segura outra colher, e nenhuma colher extra aparece nas mãos. As colheres de madeira do pote ao fundo ficam paradas onde estão, sem serem movidas e sem aumentar em número. Não inventar logos, marcas ou detalhes.
+
+AMBIENTE:
+Preservar o ambiente do primeiro quadro: cozinha clara e aconchegante, com prateleiras de madeira, planta pendurada, tábuas de corte, uma panela escura com legumes cozinhando no fogão, tomates, alho e salsinha numa tábua em primeiro plano e um pote branco com colheres de madeira ao fundo. O cenário fica parado e igual em todas as cenas, sem objetos novos.
+
+AÇÃO:
+0 a 1 s: parte do quadro inicial, mexendo lentamente a panela com a colher.
+1 a 4 s: enquanto fala, levanta devagar a colher alguns centímetros para fora da panela, com a concha voltada para a câmera, e a mostra.
+4 a 6 s: leva a colher de volta à panela e volta a mexer devagar.
+6 a 8 s: continua mexendo devagar e sorri para a câmera.
+Não faz: não solta a colher, não pega nem troca por outra colher (inclusive as do pote ao fundo), não mexe em outros objetos, não derrama nem faz cortes ou aproximações; não improvisa nenhuma ação além do descrito; nenhuma segunda colher aparece nas mãos. A panela, a tábua e o pote ao fundo ficam parados.
+
+CÂMERA:
+Medium shot fixo, câmera na altura do peito, rosto sempre visível. Movimentos suaves e lentos. Sem close, sem cortes, fusões, transições ou sobreposições.
+
+ILUMINAÇÃO:
+Preservar a iluminação do primeiro quadro: luz natural quente e dourada de janela, suave, sem sombras duras. A mesma nas 3 cenas.
+
+EXPRESSÃO:
+Expressão natural e atenta ao produto, sorriso leve.
+
+FALA:
+Em português brasileiro, tom natural: "Cada colher tem a concha oval e o cabo longo e reto, e dá para ver os veios da madeira natural."
+Voz (idêntica em todas as cenas): a mesma apresentadora, mesma voz, mesmo timbre, mesmo sotaque, mesma personalidade, velocidade semelhante, interpretação natural de apresentadora de produtos.
+
+CONTINUIDADE:
+Comece exatamente no quadro inicial (o último frame da cena anterior). A posição corporal, posição das mãos, produto, enquadramento, direção do olhar, iluminação, roupa, cenário e aparência da apresentadora devem permanecer iguais a esse quadro. Só depois do primeiro momento a ação avança, como a mesma gravação contínua.
+
+FORMATO:
+Vertical 9:16.
+
+DURAÇÃO:
+Aproximadamente 8 segundos.
+
+RESTRIÇÕES:
+O produto não altera a aparência da apresentadora, e a apresentadora não altera a aparência do produto. Não afirmar nada além do que está na FALA. Não improvisar ações além das descritas em AÇÃO. Somente português brasileiro. Sem texto sobreposto, sem ícones, selos ou molduras, sem logotipos inventados, sem movimento de câmera brusco, sem zoom excessivo.

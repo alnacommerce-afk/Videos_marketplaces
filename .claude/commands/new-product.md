@@ -5,3 +5,5 @@ argument-hint: [nome do produto]
 Use a skill `flow-video`, seção "Novo produto: upload, análise e FRAME_MESTRE". Produto: $ARGUMENTS
 
 Valide a MODEL_001 (único bloqueio). Se não houver imagem do produto, PARE e mostre o bloco "ENVIE A IMAGEM DO PRODUTO" com o link exato de upload; não crie roteiro, prompts nem frame. Ao receber ENVIEI: analise a imagem, crie e valide o FRAME_MESTRE (`master_frame.png`), crie `product.json`, `visual_bible.md`, `script.md` e os 3 prompts, remova a imagem original do Git e entregue na ordem: FRAME_MESTRE, CENA 1, CENA 2, CENA 3, checklist e `READY_TO_GENERATE`. O Flow recebe só o FRAME_MESTRE (mais o último frame nas cenas 2 e 3). Se o frame não representar bem a modelo ou o produto, não declare READY.
+
+Fluxo atual: o usuário cria o FRAME_MESTRE no ChatGPT e envia. Entregue o comando padrão preenchido (`references/chatgpt-frame-command.md`), peça o frame e o que pode ser dito do produto; ao receber, valide (corte 9:16 se 2:3), crie product.json, roteiro, visual bible e os 3 prompts.

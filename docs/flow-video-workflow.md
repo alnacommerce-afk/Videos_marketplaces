@@ -41,3 +41,9 @@ organiza os arquivos; você executa no Flow.
   voz persistente; a solução definitiva (voz persistente) será adicionada depois sem refazer a skill.
 - Cena `REJECTED` (`MODEL_MISMATCH`, `PRODUCT_MISMATCH`, `ENVIRONMENT_MISMATCH`,
   `CONTINUITY_BROKEN`, `WRONG_LANGUAGE`, `WRONG_ASPECT_RATIO`): regenerar a cena.
+
+## Fluxo atual (frame criado no ChatGPT)
+1. Diga: "novo produto: <nome>". O Claude devolve o **comando padrão** preenchido.
+2. No ChatGPT, anexe a foto da modelo e a do produto e cole o comando. Confira a imagem.
+3. Envie a imagem ao Claude (link `products/_inbox/` ou anexo) e escreva o que pode ser dito do produto (nome, quantidade, medidas, material).
+4. O Claude valida o frame, cria roteiro, visual bible e os 3 prompts, e entrega. Siga o passo a passo do Flow acima (modo Frames).

@@ -57,3 +57,7 @@ blusa estampada, outra cozinha): reaproveitou só microfone e toalhas. Em refer�
 pessoas de fotos enviadas. Use **Frames to Video com o FRAME_MESTRE como quadro inicial**: o vídeo
 parte do quadro e mantém a pessoa. Descreva só cabelo e roupa no texto (sem traços do rosto). Sempre
 confira o primeiro quadro do resultado. Pessoa diferente = `MODEL_MISMATCH` (cena `REJECTED`).
+
+## Pronúncia no Veo (lição da colher_de_pau)
+- O Veo pronunciou "centímetros" como "centémetros". Palavras longas de medida podem sair erradas: preferir "trinta e oito de comprimento" a "trinta e oito centímetros" na FALA.
+- Se uma palavra sair errada, reescrever a frase sem ela (o texto do prompt não controla a pronúncia); regerar só aquela cena. A cena seguinte parte do quadro de ~7,5 s da cena regerada.

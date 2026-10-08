@@ -105,7 +105,15 @@ referências carregar → o usuário gera no Google Flow → devolve vídeo/últ
 organiza os arquivos e prepara a próxima cena. Se o Flow não estiver acessível pelo ambiente (o
 normal), isso não é erro: declare `FLOW_MANUAL_MODE` e entregue os prompts prontos.
 
-## Novo produto: upload, análise e FRAME_MESTRE
+## Fluxo atual (decisão do usuário): o frame vem pronto do ChatGPT
+O usuário cria o **FRAME_MESTRE** no ChatGPT (gratuito) com o comando padrão de `references/chatgpt-frame-command.md` e
+me envia (link `products/_inbox/` ou anexo), junto com o que pode ser dito do produto. Eu **parto do frame**: valido (e
+corto para 9:16 se vier 2:3), crio `product.json`, `script.md`, `visual_bible.md` e os 3 prompts. Não gero frame e não
+exijo a foto do produto (opcional; se o usuário enviar um infográfico, uso o texto escrito nele). Quando o usuário avisar
+"novo produto", entregue o **comando padrão preenchido** com o que ele disse (nome, quantidade, ambiente) e peça o frame.
+A seção abaixo continua valendo quando o usuário enviar a **foto do produto** (e eu gerar o frame, plano B).
+
+## Novo produto: upload, análise e FRAME_MESTRE (fluxo com foto do produto)
 O fluxo é **dinâmico**: nada vem de produto anterior; tudo é extraído da imagem do produto atual
 (`references/product-analysis.md`). O usuário não descreve o produto, não cria o frame, não escreve
 roteiro nem prompts.
@@ -150,7 +158,8 @@ ENVIEI
    roteiro nasce do produto real, nunca de um roteiro genérico adaptado depois.
 5. Listar os **benefícios disponíveis** (só os permitidos pelo PRODUCT_CLAIM_LOCK; lista vazia é
    válido) e definir o ambiente pelo contexto real de uso (`references/scene-structure.md`).
-6. Criar e validar o **FRAME_MESTRE** (`references/master-frame.md`).
+6. Criar e validar o **FRAME_MESTRE** (`references/master-frame.md`): preferência do usuário = **ChatGPT gratuito**
+   (eu entrego o prompt e as imagens a anexar); ElevenLabs só como alternativa.
 7. Criar `visual_bible.md` e `script.md` (modelos em `assets/templates/`) usando só a lista de
    benefícios; cada afirmação do roteiro cita sua fonte.
 8. Criar IMEDIATAMENTE os 3 `scene_0N/prompt.txt` completos (formato em

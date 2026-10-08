@@ -21,7 +21,17 @@ no Flow. Nas cenas 2 e 3 entra também o último frame da cena anterior (continu
   desnecessários, produtos concorrentes ou unidades extras do produto.
 - Sem texto, ícones, selos, setas ou molduras. Infográfico: não leve nada disso para o frame.
 
-## Gerar
+## Preferência do usuário: ChatGPT (gratuito) primeiro
+O usuário prefere **criar o FRAME_MESTRE no ChatGPT** (gratuito) e liberou a ElevenLabs só como alternativa. Fluxo:
+1. Entregue o **prompt pronto para o ChatGPT** (Português) e a lista do que anexar: a `reference.png` da modelo e a foto
+   do produto (envie as duas imagens ao usuário com `SendUserFile`). Peça vertical 9:16; se o ChatGPT só gerar 2:3
+   (1024×1536), a pessoa deve ficar centralizada, porque eu corto para 9:16 (sem esticar).
+2. O usuário sobe o resultado pelo link de upload (`products/_inbox/`), ou anexa no chat.
+3. Eu valido (checklist abaixo), corto para 9:16 se preciso e salvo como `master_frame.png`.
+4. Se o ChatGPT recusar (pessoa real/foto de rosto), gerar a imagem errada ou o limite gratuito acabar: aí uso a
+   ElevenLabs (abaixo), informando o custo. Eu não tenho acesso ao ChatGPT: quem gera lá é o usuário.
+
+## Gerar (ElevenLabs, quando for o caso)
 1. Referência do produto: se a imagem original for um infográfico ou tiver fundo/texto, recorte só a
    região do produto num arquivo **temporário** (scratchpad; PIL), sem alterar o original.
 2. Ferramenta: use a ferramenta de imagem conectada que aceite **várias referências** (o produto
