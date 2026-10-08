@@ -64,7 +64,7 @@
   "master_frame_sha256": "0a6cf7ab83f891bcee29fea60ce6450a13f2e1930d07864974b8128f010f85cc",
   "master_frame_aprovado": true,
   "resumo_caracteristicas": "2 toalhas de sublimação, brancas e felpudas; um lado poliéster para sublimar, outro algodão; 200 g; 130 x 70 cm.",
-  "_status": "3 CENAS GERADAS E APROVADAS PELO USUÁRIO (prompts v4). Falta unir (final.mp4) e normalizar o áudio. Cena 2 tem ressalvas de câmera (prompt v5 corrige).",
+  "_status": "VÍDEO FINAL ENTREGUE AO USUÁRIO (2026-10-08): 2 versões (corte seco e fusão de 0,15 s). Cena 2 mantida como gerada (opção A): close e 2 fusões no meio (~9,5 a 13 s).",
   "_fonte": "Imagem enviada pelo usuário (products/_inbox/1.png, movida para references/) + dados informados pelo usuário em texto (2026-10-08).",
   "gramatura": "200 g (informado pelo usuário; não confirmado se é peso ou g/m²: falar apenas '200 g')",
   "master_frame_geracao": {
@@ -158,6 +158,22 @@
     "modo": "Frames",
     "resolucao": "720x1280",
     "cenas": 3,
-    "final_criado": false
+    "final_criado": true,
+    "versoes_finais": [
+      {
+        "arquivo": "anuncio_toalha_sublimacao.mp4",
+        "emendas": "corte seco",
+        "duracao_s": 22.9,
+        "tamanho_mb": 3.3
+      },
+      {
+        "arquivo": "anuncio_toalha_sublimacao_transicao.mp4",
+        "emendas": "fusão 0,15 s",
+        "duracao_s": 22.9,
+        "tamanho_mb": 3.4
+      }
+    ],
+    "especificacoes": "720x1280, 24 fps, H.264 High, AAC 128 kbps, -15,8 LUFS, faststart",
+    "observacao": "Arquivos finais não versionados (enviados no chat)."
   }
 }

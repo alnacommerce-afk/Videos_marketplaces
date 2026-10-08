@@ -161,7 +161,7 @@ ENVIEI
 11. Entregar (seção "Entrega no chat").
 12. Execução manual no Flow (usuário): cena 1 → `scene_01/output.mp4` → extrair último frame → cena 2 →
     último frame → cena 3. Validar as 3 cenas (`references/validation.md`); cena que falhar = `REJECTED`;
-    unir em `final/final.mp4`.
+    unir em `final/final.mp4` (corte no fim da fala, emendas, áudio e compressão em `references/video-finishing.md`).
 
 Se o Flow não estiver acessível: `FLOW_MANUAL_MODE`. Se não houver ferramenta de imagem para o frame:
 `MASTER_FRAME_TOOL_UNAVAILABLE` (ver `master-frame.md`).

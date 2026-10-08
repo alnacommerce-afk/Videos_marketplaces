@@ -53,7 +53,7 @@ a próxima cena a partir dele: o erro (ex.: unidade a mais) se propaga.
 - O Veo termina o clipe com um quadro borrado: ver "Quadro de continuidade".
 - Veo 3.1 Lite entrega 720p; a modelo se manteve, mas considere um modelo melhor para o vídeo final.
 
-## Unir as cenas
+## Unir as cenas (resumo; o procedimento completo está em `video-finishing.md`)
 `ffmpeg -f concat -safe 0 -i lista.txt -af loudnorm -c:v libx264 -crf 18 -c:a aac final.mp4`
 (cada linha da lista: `file 'scene_01/output.mp4'`). Só una cenas aprovadas. Vídeos finais pesados não vão para
 o Git sem pedido do usuário.
