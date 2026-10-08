@@ -52,6 +52,12 @@ Nunca sacrifique identidade ou produto por uma cena mais bonita.
   mostre `VOICE_CONSISTENCY_NOT_GUARANTEED` e marque `REJECTED`. Isso não impede criar roteiro e
   prompts. Sem ferramenta externa de voz por enquanto (nem citar nos prompts); a arquitetura aceita
   uma depois (ver `references/identity-rules.md`).
+- **Várias unidades:** nas cenas de produto com mais de 1 unidade, nunca separe, "desdobre" ou pegue uma unidade
+  do conjunto (o Veo cria unidades a mais: 2 viraram 3). Ações com o conjunto junto; o prompt diz "sempre
+  exatamente N unidades". A **AÇÃO é escrita por faixa de tempo** (0 a 2 s, 2 a 6 s…) com uma linha "Não faz:"
+  (o Veo improvisa gestos para preencher 8 s, e uma fala sobre "lados" vira gesto de virar o produto).
+  Câmera: medium shot fixo, rosto visível, "sem cortes, fusões ou sobreposições" (close gera fantasmas).
+  Revisão de vídeos devolvidos: `references/video-review.md`.
 - **Políticas do Flow:** os prompts não pedem "preservar exatamente o rosto" nem citam "pessoa real" ou
   marcas; pedem consistência de aparência. Bloqueio por "pessoas famosas": `references/flow-policy.md`
   (diagnóstico texto x imagem). Nunca burlar o filtro.
@@ -219,7 +225,7 @@ Detalhes de câmera, áudio e ambientes: `references/scene-structure.md`.
 Cena 2 continua a cena 1; cena 3 continua a cena 2, como uma só gravação. Escrever só "continue o
 vídeo anterior" é insuficiente: o prompt deve mandar usar o último frame como referência visual do
 primeiro momento da cena e listar o que preservar. Extraia o último frame de
-cada cena (`ffmpeg -sseof -0.1 -i scene_01/output.mp4 -frames:v 1 scene_01/last_frame.png`) e use-o
+cada cena (o quadro **mais nítido nos últimos ~1 s**, normalmente ~7,5 s: `ffmpeg -ss 7.5 -i scene_01/output.mp4 -vframes 1 scene_01/last_frame.png`; o último quadro literal costuma estar borrado, ver `references/video-review.md`) e use-o
 como referência da próxima (a identidade continua vindo do FRAME_MESTRE). Inclua nos prompts das cenas 2 e 3, explicitamente:
 "Continue a partir do último frame da cena anterior." e
 "Preserve exatamente a identidade da modelo, aparência facial, cabelo, roupa, ambiente, iluminação,

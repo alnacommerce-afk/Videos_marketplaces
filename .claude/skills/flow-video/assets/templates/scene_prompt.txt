@@ -27,10 +27,11 @@ AMBIENTE:
 Preservar o ambiente do FRAME_MESTRE: {ambiente}. O mesmo nas 3 cenas, sem objetos extras, produtos concorrentes ou outras unidades do produto.
 
 AÇÃO:
-{ação desta cena; cena 1 parte da composição do FRAME_MESTRE, já em movimento}
+{ação por faixa de tempo: 0 a 2 s: …; 2 a 6 s: …; 6 a 8 s: … (cena 1 parte do primeiro quadro)}
+Não faz: {gestos proibidos: separar, desdobrar, virar, levantar ou duplicar unidades; improvisar ações; aparecer unidade extra. Se a fala cita lados/partes do produto, diga que é só falado e que o produto não é virado nem aberto.}
 
 CÂMERA:
-{enquadramento e movimento suave}
+{medium shot fixo, rosto sempre visível; no máximo uma aproximação leve, sem close que corte o rosto. Sempre: sem cortes, fusões, transições ou sobreposições.}
 
 ILUMINAÇÃO:
 Preservar a iluminação do FRAME_MESTRE: {da visual bible}. A mesma nas 3 cenas.
@@ -53,4 +54,4 @@ DURAÇÃO:
 Aproximadamente 8 segundos.
 
 RESTRIÇÕES:
-O produto não altera a aparência da apresentadora, e a apresentadora não altera a aparência do produto. Não afirmar nada além do que está na FALA. Somente português brasileiro. Sem texto sobreposto, sem ícones, selos ou molduras, sem logotipos inventados, sem movimento de câmera brusco, sem zoom excessivo.
+O produto não altera a aparência da apresentadora, e a apresentadora não altera a aparência do produto. Não afirmar nada além do que está na FALA. Não improvisar ações além das descritas em AÇÃO. Somente português brasileiro. Sem texto sobreposto, sem ícones, selos ou molduras, sem logotipos inventados, sem movimento de câmera brusco, sem zoom excessivo.

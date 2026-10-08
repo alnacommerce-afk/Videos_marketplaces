@@ -20,16 +20,19 @@ MODELO:
 A apresentadora é a mulher que aparece no primeiro quadro: cabelo castanho escuro, ondulado, na altura do queixo; camisa branca de manga longa com as mangas dobradas; calça preta; microfone de lapela preto preso na gola. Manter exatamente esse visual do início ao fim. Não trocar de pessoa, de cabelo nem de roupa.
 
 PRODUTO:
-Exatamente 2 toalhas brancas, felpudas, com uma faixa em relevo de linhas paralelas perto da extremidade, sem estampa, sem logo e sem texto. Preservar exatamente como no primeiro quadro. Não alterar cores, quantidade (sempre 2 toalhas), formato, textura ou aparência. Não inventar logos, marcas, estampas ou detalhes.
+Exatamente 2 toalhas brancas, felpudas, com uma faixa em relevo de linhas paralelas perto da extremidade, sem estampa, sem logo e sem texto. Preservar exatamente como no primeiro quadro. Não alterar cores, quantidade (sempre 2 toalhas), formato, textura ou aparência. Em todos os quadros do vídeo aparecem sempre exatamente 2 toalhas, juntas nas mãos da apresentadora; nenhuma toalha é separada da pilha, desdobrada isoladamente ou duplicada. Não inventar logos, marcas, estampas ou detalhes.
 
 AMBIENTE:
 Preservar o ambiente do primeiro quadro: ambiente claro e arrumado, com armários e bancada de madeira clara. O mesmo nas 3 cenas, sem objetos extras, produtos concorrentes ou outras toalhas.
 
 AÇÃO:
-Segura as duas toalhas em destaque à frente do corpo e sorri para a câmera enquanto fala.
+0 a 1 s: parte do quadro inicial, com as duas toalhas empilhadas à frente do corpo.
+1 a 7 s: segura as duas toalhas juntas à frente do corpo com as duas mãos e fala sorrindo para a câmera, sem mexer nas toalhas.
+7 a 8 s: sorri e fica parada.
+Não faz: não levanta, separa, desdobra, vira nem mostra os lados de nenhuma toalha; não improvisa nenhuma ação com as toalhas além do descrito; nenhuma terceira toalha aparece (nem acima, nem ao lado). As duas toalhas permanecem empilhadas e apoiadas nas mãos o tempo todo.
 
 CÂMERA:
-Medium shot estável, as duas toalhas bem visíveis.
+Medium shot fixo, câmera na altura do peito, rosto sempre visível. Movimentos suaves e lentos. Sem close que corte o rosto, sem cortes, fusões, transições ou sobreposições.
 
 ILUMINAÇÃO:
 Preservar a iluminação do primeiro quadro: luz natural suave e uniforme, tom neutro-quente, sem sombras duras. A mesma nas 3 cenas.
@@ -51,4 +54,4 @@ DURAÇÃO:
 Aproximadamente 8 segundos.
 
 RESTRIÇÕES:
-O produto não altera a aparência da apresentadora, e a apresentadora não altera a aparência do produto. Não afirmar nada além do que está na FALA. Somente português brasileiro. Sem texto sobreposto, sem ícones, selos ou molduras, sem logotipos inventados, sem movimento de câmera brusco, sem zoom excessivo.
+O produto não altera a aparência da apresentadora, e a apresentadora não altera a aparência do produto. Não afirmar nada além do que está na FALA. Não improvisar ações com as toalhas além das descritas em AÇÃO. Somente português brasileiro. Sem texto sobreposto, sem ícones, selos ou molduras, sem logotipos inventados, sem movimento de câmera brusco, sem zoom excessivo.

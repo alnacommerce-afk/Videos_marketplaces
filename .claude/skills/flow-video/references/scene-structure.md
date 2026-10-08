@@ -33,6 +33,10 @@ ainda está disponível." / "Essa pode ser uma ótima opção para sua casa."
 ## Câmera
 Estética de publicidade moderna para redes sociais: medium shot, close-up, product shot,
 over-the-shoulder quando couber, movimentos suaves, aproximações discretas, câmera natural.
+Quando a apresentadora fala para a câmera: medium shot fixo com o rosto sempre visível; "close" e "aproximação"
+cortam o rosto, perdem o foco e geram fusões (dupla exposição). Sempre escrever "sem cortes, fusões, transições
+ou sobreposições".
+
 Evitar: movimento exagerado, câmera tremendo, transições artificiais, mudanças bruscas de
 enquadramento, zoom excessivo.
 

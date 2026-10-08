@@ -64,7 +64,7 @@
   "master_frame_sha256": "0a6cf7ab83f891bcee29fea60ce6450a13f2e1930d07864974b8128f010f85cc",
   "master_frame_aprovado": true,
   "resumo_caracteristicas": "2 toalhas de sublimação, brancas e felpudas; um lado poliéster para sublimar, outro algodão; 200 g; 130 x 70 cm.",
-  "_status": "READY_TO_GENERATE: FRAME_MESTRE aprovado pelo usuário; prompts prontos. Imagem original removida do projeto. | Prompts v2 (2026-10-08): reescritos após bloqueio do Flow ('pessoas famosas'); ver references/flow-policy.md | Prompts v3 (2026-10-08): modo Frames to Video (quadro inicial); Ingredients gerou outra modelo (MODEL_MISMATCH).",
+  "_status": "3 CENAS GERADAS E APROVADAS PELO USUÁRIO (prompts v4). Falta unir (final.mp4) e normalizar o áudio. Cena 2 tem ressalvas de câmera (prompt v5 corrige).",
   "_fonte": "Imagem enviada pelo usuário (products/_inbox/1.png, movida para references/) + dados informados pelo usuário em texto (2026-10-08).",
   "gramatura": "200 g (informado pelo usuário; não confirmado se é peso ou g/m²: falar apenas '200 g')",
   "master_frame_geracao": {
@@ -79,5 +79,85 @@
       "microfone quadrado com LED (referência da modelo é redondo)",
       "ambiente não explicitamente banheiro"
     ]
+  },
+  "revisoes": [
+    {
+      "data": "2026-10-08",
+      "arquivo": "Apresentadora_mostrando_toalhas (8 s, 720x1280, Veo 3.1 Lite, modo Frames)",
+      "resultado": "REJECTED",
+      "motivos": [
+        "PRODUCT_MISMATCH: 3 toalhas a partir de ~3 s (ação de desdobrar uma toalha)",
+        "último quadro borrado: usar o quadro de ~7,5 s"
+      ],
+      "ok": [
+        "modelo preservada (modo Frames)",
+        "primeiro quadro ~ FRAME_MESTRE (SSIM 0,88)",
+        "áudio contínuo",
+        "9:16, 8 s",
+        "fala correta (confirmado pelo usuário)"
+      ],
+      "fala_verificada": true,
+      "causa": "Prompt da cena 1 só dizia 'segura e apresenta'; o Veo improvisou e a fala sobre 'um lado/outro lado' virou gesto de desdobrar uma toalha; apareceu uma 3ª toalha acima da pilha e a pilha ficou com 3.",
+      "prompt_usado": "cena 1"
+    },
+    {
+      "data": "2026-10-08",
+      "cena": 1,
+      "arquivo": "video_1.mp4 (8 s, 720x1280, 24 fps)",
+      "resultado": "APROVADA",
+      "ok": [
+        "2 toalhas em todos os quadros",
+        "modelo e microfone consistentes",
+        "primeiro quadro ~ FRAME_MESTRE (SSIM 0,88)",
+        "áudio contínuo (média -16,9 dB, pico -1,5 dB)",
+        "nitidez estável até ~7,5 s"
+      ],
+      "ressalvas": [
+        "uma mão livre gesticula (sem mexer nas toalhas)"
+      ],
+      "fala": "confirmada pelo usuário"
+    },
+    {
+      "data": "2026-10-08",
+      "cena": 2,
+      "arquivo": "video_2.mp4",
+      "resultado": "APROVADA PELO USUÁRIO, com ressalvas técnicas",
+      "ok": [
+        "2 toalhas em todos os quadros",
+        "modelo e microfone consistentes",
+        "continuidade com a cena 1 (SSIM 0,77)",
+        "áudio contínuo (média -17,4 dB, pico -0,9 dB)"
+      ],
+      "ressalvas": [
+        "close de ~2,5 s cortou o rosto e perdeu o foco (nitidez ~200)",
+        "duas fusões com dupla exposição (~2,0 s e ~5,0 a 5,5 s)"
+      ],
+      "causa": "CÂMERA pedia 'aproximação suave a um close'",
+      "correcao": "CÂMERA v5: medium shot fixo, sem close, sem cortes/fusões",
+      "fala": "não verificada por mim"
+    },
+    {
+      "data": "2026-10-08",
+      "cena": 3,
+      "arquivo": "video_3.mp4",
+      "resultado": "APROVADA",
+      "ok": [
+        "2 toalhas em todos os quadros",
+        "modelo e microfone consistentes",
+        "continuidade com a cena 2 (SSIM 0,75)",
+        "áudio contínuo (média -18,1 dB, pico -1,1 dB)"
+      ],
+      "ressalvas": [
+        "quadro final um pouco menos nítido (use 7,5 s)"
+      ],
+      "fala": "não verificada por mim"
+    }
+  ],
+  "videos_gerados": {
+    "modelo_flow": "Veo 3.1 Lite",
+    "modo": "Frames",
+    "resolucao": "720x1280",
+    "cenas": 3,
+    "final_criado": false
   }
 }

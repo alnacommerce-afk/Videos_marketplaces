@@ -12,6 +12,12 @@
 - [ ] imagem original do produto removida do projeto/Git (`master-frame.md`) · [ ] MODEL_001 preservada
 Informação crítica ilegível ou ambígua: não invente, faça uma pergunta objetiva antes.
 
+## Ao receber o vídeo de uma cena (usar `video-review.md`)
+- [ ] primeiro quadro igual ao quadro inicial (mesma pessoa, roupa, cenário)
+- [ ] quantidade do produto correta **em todos os quadros** (não só no primeiro)
+- [ ] último quadro nítido (senão usar o quadro de ~7,5 s) · [ ] áudio presente · [ ] 9:16 · [ ] ~8 s
+- [ ] fala em português brasileiro (verificada por transcrição ou pelo usuário, não presumida)
+
 ## Antes do /create-video (pré-checagem)
 - `assets/model/MODEL_001/` existe e tem `reference.png`?
 - `approved.json` tem `approved: true`?

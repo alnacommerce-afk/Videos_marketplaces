@@ -61,6 +61,8 @@ só o que é visualmente demonstrável e confirmado:
 | ferramenta | uso seguro e prático, sem prometer desempenho não escrito |
 | acessório | uso/combinação, detalhes |
 Nunca use estrutura inadequada ao produto.
+Produtos com várias unidades: a demonstração usa o **conjunto junto** (tocar, inclinar, aproximar). Nunca
+separar, desdobrar ou pegar uma unidade isolada: o modelo de vídeo duplica unidades.
 
 ## Ambiente automático
 Pelo contexto real de uso: toalha → banheiro · roupa → quarto/closet/ambiente de moda · bolsa →
