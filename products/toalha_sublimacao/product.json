@@ -1,0 +1,83 @@
+{
+  "product_id": "toalha_sublimacao",
+  "nome": "Toalha de sublimação (2 toalhas)",
+  "categoria": "BANHO",
+  "descricao": "Toalha branca felpuda (laços de toalha), com faixa/barra em relevo perto da extremidade; produto de sublimação",
+  "cor": "branca",
+  "quantidade": "2 toalhas (confirmado pelo usuário)",
+  "tamanho": "130 x 70 cm (informado pelo usuário)",
+  "material": "um lado poliéster, para sublimar; outro lado algodão (informado pelo usuário)",
+  "caracteristicas": [
+    "2 toalhas",
+    "Toalhas de sublimação",
+    "Um lado poliéster, para sublimar",
+    "Outro lado algodão",
+    "200 g",
+    "130 x 70 cm",
+    "Cor branca (visível)",
+    "Superfície felpuda (visível)"
+  ],
+  "beneficios": [],
+  "preco": "",
+  "oferta": "",
+  "publico": "",
+  "imagens_referencia": [],
+  "informacoes_importantes": [],
+  "eh_infografico": false,
+  "tipo_produto": "toalha",
+  "formato": "retangular, dobrada",
+  "textura": "felpuda (laços de toalha)",
+  "estampas": "nenhuma visível (lisa, branca)",
+  "acabamento": "faixa/barra em relevo com linhas paralelas perto da extremidade",
+  "detalhes_visuais": [
+    "toalhas dobradas e empilhadas",
+    "uma ponta/dobra levantada formando um pico",
+    "borda tecida com listras em relevo"
+  ],
+  "acessorios_incluidos": [],
+  "embalagem": "nenhuma visível",
+  "textos_na_imagem": [],
+  "dimensoes": "130 x 70 cm (informado pelo usuário)",
+  "composicao": "poliéster de um lado (para sublimação) e algodão do outro (informado pelo usuário)",
+  "elementos_que_nao_podem_mudar": [
+    "exatamente 2 toalhas",
+    "cor branca",
+    "textura felpuda",
+    "faixa em relevo com linhas paralelas perto da extremidade",
+    "sem estampa nem logo"
+  ],
+  "nao_afirmar": [
+    "absorção, maciez, durabilidade, secagem (não informados nem escritos)",
+    "qual lado é poliéster e qual é algodão na imagem",
+    "qualidade/resultado da sublimação",
+    "marca, preço, oferta, estoque",
+    "'de banho' (só 'toalha')",
+    "'kit' (o usuário disse apenas '2 toalhas')",
+    "qual das 2 toalhas é a de cima ou de baixo"
+  ],
+  "ambiente_escolhido": "ambiente claro com armários e bancada de madeira clara, como no FRAME_MESTRE aprovado (não explicitamente banheiro)",
+  "imagem_original_nome": "1.png",
+  "imagem_original_sha256": "1a556c7109c4a51cdd2b0f4a98339859a5fc6fe5abf61ec55de13d8dcf03d14a",
+  "imagem_original_removida": true,
+  "processado_em": "2026-10-08",
+  "master_frame": "master_frame.png",
+  "master_frame_sha256": "0a6cf7ab83f891bcee29fea60ce6450a13f2e1930d07864974b8128f010f85cc",
+  "master_frame_aprovado": true,
+  "resumo_caracteristicas": "2 toalhas de sublimação, brancas e felpudas; um lado poliéster para sublimar, outro algodão; 200 g; 130 x 70 cm.",
+  "_status": "READY_TO_GENERATE: FRAME_MESTRE aprovado pelo usuário; prompts prontos. Imagem original removida do projeto. | Prompts v2 (2026-10-08): reescritos após bloqueio do Flow ('pessoas famosas'); ver references/flow-policy.md | Prompts v3 (2026-10-08): modo Frames to Video (quadro inicial); Ingredients gerou outra modelo (MODEL_MISMATCH).",
+  "_fonte": "Imagem enviada pelo usuário (products/_inbox/1.png, movida para references/) + dados informados pelo usuário em texto (2026-10-08).",
+  "gramatura": "200 g (informado pelo usuário; não confirmado se é peso ou g/m²: falar apenas '200 g')",
+  "master_frame_geracao": {
+    "ferramenta": "ElevenLabs creative_generate_image",
+    "modelo": "gemini-3-pro-image",
+    "geracoes_usadas": 2,
+    "limite": 3,
+    "custo_total_aprox_usd": 0.55,
+    "geracao_1": "16:9 (reprovada por formato)",
+    "geracao_2": "9:16 768x1376 (candidata)",
+    "observacoes_aprovadas": [
+      "microfone quadrado com LED (referência da modelo é redondo)",
+      "ambiente não explicitamente banheiro"
+    ]
+  }
+}

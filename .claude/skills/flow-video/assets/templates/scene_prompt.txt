@@ -1,11 +1,12 @@
 # Prompt de cena — {PRODUCT_ID} · CENA {N} de 3
 ESTADO: {cena 1: READY | cenas 2 e 3: READY (executar após o último frame da cena anterior; WAITING_FOR_SCENE_0{N-1}_LAST_FRAME até lá)}
 
-ANEXAR NO FLOW (esta lista NÃO vai dentro do prompt):
-[cena 1]      Imagem 1 = FRAME_MESTRE: products/{PRODUCT_ID}/master_frame.png
-[cenas 2 e 3] Imagem 1 = último frame da cena anterior: products/{PRODUCT_ID}/scene_0{N-1}/last_frame.png   (CONTINUIDADE)
-              Imagem 2 = FRAME_MESTRE: products/{PRODUCT_ID}/master_frame.png   (IDENTIDADE; se o Flow aceitar só uma imagem, use apenas o último frame)
-Não anexe a foto original do produto nem a reference.png da modelo: o FRAME_MESTRE já contém os dois.
+COMO USAR NO FLOW (esta parte NÃO vai dentro do prompt):
+Modo: FRAMES TO VIDEO (quadro inicial). NÃO use Ingredients/imagem de referência: nesse modo o Flow cria outra pessoa.
+[cena 1]      Primeiro quadro (start frame) = FRAME_MESTRE: products/{PRODUCT_ID}/master_frame.png
+[cenas 2 e 3] Primeiro quadro (start frame) = último frame da cena anterior: products/{PRODUCT_ID}/scene_0{N-1}/last_frame.png
+Não anexe a foto original do produto nem a reference.png da modelo.
+Confira: o primeiro quadro do vídeo gerado deve ser igual ao quadro inicial. Se for outra pessoa: MODEL_MISMATCH, rejeite.
 
 === PROMPT PARA O FLOW === (copie só o que vem abaixo; nada aqui dentro é caminho de arquivo)
 
@@ -13,11 +14,11 @@ OBJETIVO DA CENA:
 {cena 1: hook + apresentação + principal característica confirmada | cena 2: demonstração + características demonstráveis e confirmadas | cena 3: desejo/uso + CTA sutil}
 
 REFERÊNCIAS:
-[cena 1] A imagem anexada é o FRAME_MESTRE: a referência visual principal. Ela mostra a apresentadora e o produto, o ambiente, a roupa e a iluminação desta cena.
-[cenas 2 e 3] Imagem 1: último frame da cena anterior, referência de CONTINUIDADE. Imagem 2: o FRAME_MESTRE, referência de IDENTIDADE da apresentadora e do produto.
+[cena 1] O primeiro quadro do vídeo é o FRAME_MESTRE (modo Frames to Video, quadro inicial). O vídeo começa exatamente nesse quadro: mesma apresentadora, mesma roupa, mesmo cenário e o mesmo produto. A apresentadora não é substituída nem redesenhada.
+[cenas 2 e 3] O primeiro quadro é o último frame da cena anterior (modo Frames to Video, quadro inicial); o vídeo continua exatamente dele.
 
 MODELO:
-Preservar exatamente a apresentadora do FRAME_MESTRE: mesmo rosto, cabelo, tom de pele, idade aparente, proporções e roupa. Manter o microfone de lapela Hollyland preto preso como no FRAME_MESTRE, sem remover nem alterar.
+A apresentadora é a mulher que aparece no primeiro quadro: {descrição só de cabelo, roupa e acessórios, tirada da model_identity.md; sem traços do rosto}. Manter exatamente esse visual do início ao fim. Não trocar de pessoa, de cabelo nem de roupa. Microfone de lapela preso na gola, se estiver no quadro.
 
 PRODUTO:
 {descrição extraída do produto atual: quantidade, cores (qual item tem qual cor), formato, material, textura, estampa, acabamento, detalhes}. Preservar exatamente como no FRAME_MESTRE. Não alterar cores, quantidade, estampa, formato ou aparência. Não inventar logos, marcas ou detalhes.
@@ -39,11 +40,11 @@ EXPRESSÃO:
 
 FALA:
 Em português brasileiro, tom natural: "{18 a 24 palavras, só afirmações confirmadas}"
-Voz (idêntica em todas as cenas): a mesma apresentadora, mesma voz, mesmo timbre, mesmo sotaque, mesma personalidade, velocidade semelhante, interpretação natural de pessoa real apresentando um produto.
+Voz (idêntica em todas as cenas): a mesma apresentadora, mesma voz, mesmo timbre, mesmo sotaque, mesma personalidade, velocidade semelhante, interpretação natural de apresentadora de produtos.
 
 CONTINUIDADE:
-[cena 1] Começar exatamente da composição do FRAME_MESTRE e terminar em posição estável (corpo, mãos e produto visíveis e parados), para a próxima cena partir desse momento.
-[cenas 2 e 3] Use o último frame da cena anterior (Imagem 1) como referência primária para o primeiro momento desta cena. A posição corporal, posição das mãos, produto, enquadramento, direção do olhar, iluminação, roupa, cenário e identidade facial devem permanecer visualmente consistentes com esse frame. O FRAME_MESTRE (Imagem 2) mantém a identidade da apresentadora e do produto. Só depois do primeiro momento a ação avança, como a mesma gravação contínua.
+[cena 1] Começar exatamente do FRAME_MESTRE e terminar em posição estável (corpo, mãos e produto visíveis e parados), para a próxima cena partir desse momento.
+[cenas 2 e 3] Comece exatamente no quadro inicial (o último frame da cena anterior). A posição corporal, posição das mãos, produto, enquadramento, direção do olhar, iluminação, roupa, cenário e aparência da apresentadora devem permanecer iguais a esse quadro. Só depois do primeiro momento a ação avança, como a mesma gravação contínua.
 
 FORMATO:
 Vertical 9:16.
@@ -52,4 +53,4 @@ DURAÇÃO:
 Aproximadamente 8 segundos.
 
 RESTRIÇÕES:
-O produto nunca altera o rosto ou a aparência da apresentadora, e a apresentadora nunca altera a aparência do produto. Não afirmar nada além do que está na FALA. Somente português brasileiro. Sem texto sobreposto, sem ícones, selos ou molduras, sem logotipos inventados, sem movimento de câmera brusco, sem zoom excessivo.
+O produto não altera a aparência da apresentadora, e a apresentadora não altera a aparência do produto. Não afirmar nada além do que está na FALA. Somente português brasileiro. Sem texto sobreposto, sem ícones, selos ou molduras, sem logotipos inventados, sem movimento de câmera brusco, sem zoom excessivo.

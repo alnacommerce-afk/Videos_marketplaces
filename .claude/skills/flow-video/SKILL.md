@@ -52,6 +52,9 @@ Nunca sacrifique identidade ou produto por uma cena mais bonita.
   mostre `VOICE_CONSISTENCY_NOT_GUARANTEED` e marque `REJECTED`. Isso não impede criar roteiro e
   prompts. Sem ferramenta externa de voz por enquanto (nem citar nos prompts); a arquitetura aceita
   uma depois (ver `references/identity-rules.md`).
+- **Políticas do Flow:** os prompts não pedem "preservar exatamente o rosto" nem citam "pessoa real" ou
+  marcas; pedem consistência de aparência. Bloqueio por "pessoas famosas": `references/flow-policy.md`
+  (diagnóstico texto x imagem). Nunca burlar o filtro.
 - **Produto (PRODUCT_LOCK):** não alterar cor, quantidade, formato, embalagem, logo, textura,
   proporção. 1 unidade na foto = 1 unidade no vídeo. Em conflito, vale a referência visual e os dados
   explícitos do usuário.
@@ -167,24 +170,26 @@ Quando tudo estiver validado, entregue **nesta ordem**:
        ==================================================
        CENA 1 — PRONTO PARA COPIAR E COLAR
        ==================================================
-       ANEXAR NO FLOW: Imagem 1 = FRAME_MESTRE (master_frame.png)
+       MODO: Frames to Video · Primeiro quadro = FRAME_MESTRE (master_frame.png)
        ```
        [bloco do prompt: tudo depois de "=== PROMPT PARA O FLOW ===", sem caminhos de arquivo]
        ```
 
-   Cena 2: Imagem 1 = último frame da cena 1 (continuidade), Imagem 2 = FRAME_MESTRE (identidade,
-   quando o Flow aceitar mais de uma imagem). Cena 3: igual, com o último frame da cena 2. A lista
-   "ANEXAR NO FLOW" fica fora do bloco de código. Dentro do bloco, o prompt só diz "Imagem 1…", nunca
-   caminhos. Não peça a imagem original do produto nem a `reference.png` da modelo.
+   Cena 2: primeiro quadro = último frame da cena 1. Cena 3: primeiro quadro = último frame da cena 2.
+   **Sempre no modo Frames to Video (quadro inicial).** Nunca Ingredients/imagem de referência: nesse
+   modo o Flow reaproveita objetos e cria **outra pessoa** (acontecido com a toalha_sublimacao). A lista
+   "COMO USAR NO FLOW" fica fora do bloco de código. Dentro do bloco, o prompt não cita caminhos de arquivo
+   nem "Imagem 1/2"; ele descreve só a roupa e o cabelo da modelo (sem traços do rosto), o que ancora a
+   aparência sem pedir ao Flow para "copiar um rosto". Não peça a foto original do produto nem a
+   `reference.png`. Depois de cada cena, confira se o primeiro quadro do vídeo é igual ao quadro inicial.
 5. **CHECKLIST:** `MODEL: APROVADA` · `PRODUTO: APROVADO` · `FRAME MESTRE: APROVADO` ·
    `CENA 1: READY` · `CENA 2: READY (executar após o último frame da cena 1)` ·
    `CENA 3: READY (executar após o último frame da cena 2)`. Fim: **`READY_TO_GENERATE`**.
 Não entregue só roteiro ou ideias. Se algum item da validação falhar, não escreva READY.
 
 ## Hierarquia de referências
-- **No Flow:** cena 1 = só o FRAME_MESTRE. Cenas 2 e 3 = último frame da cena anterior
-  (**continuidade**, referência primária do primeiro momento) + FRAME_MESTRE (**identidade** da modelo e
-  do produto). Nunca `MODEL_001/reference.png` nem a imagem original do produto.
+- **No Flow (modo Frames to Video):** cena 1 = primeiro quadro é o FRAME_MESTRE; cenas 2 e 3 = primeiro quadro
+  é o último frame da cena anterior. A identidade da modelo e do produto vem do próprio quadro inicial.
 - **Na criação do FRAME_MESTRE:** identidade da pessoa = `reference.png`; identidade do produto = imagem
   do produto. O produto nunca altera o rosto; a modelo nunca altera o produto.
 

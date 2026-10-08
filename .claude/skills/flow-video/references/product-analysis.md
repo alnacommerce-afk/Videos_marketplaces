@@ -12,7 +12,7 @@ Imagem válida = arquivo `.png`, `.jpg`, `.jpeg` ou `.webp`, não vazio, que abr
 não é a `reference.png` da MODEL_001.
 ```
 file --mime-type -b ARQUIVO                       # deve começar com image/
-python3 -I -c "from PIL import Image,sys; im=Image.open('ARQUIVO'); im.verify(); print(im.size)"
+python3 -I -c "from PIL import Image; im=Image.open('ARQUIVO'); im.verify(); print(Image.open('ARQUIVO').size)"
 sha256sum ARQUIVO
 ```
 Lado menor < 600 px: avise que a fidelidade do produto pode cair, mas continue. Imagem ilegível ou

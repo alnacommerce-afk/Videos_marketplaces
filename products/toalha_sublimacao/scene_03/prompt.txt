@@ -1,0 +1,54 @@
+# Prompt de cena — toalha_sublimacao · CENA 3 de 3
+ESTADO: READY (executar após o último frame da cena 2; WAITING_FOR_SCENE_02_LAST_FRAME até lá)
+NÃO EXECUTAR NO FLOW antes de gerar a cena 2 e salvar o último frame.
+
+COMO USAR NO FLOW (esta parte NÃO vai dentro do prompt):
+Modo: FRAMES TO VIDEO (quadro inicial). NÃO use Ingredients/imagem de referência: nesse modo o Flow cria outra pessoa.
+Primeiro quadro (start frame) = último frame da cena 2: products/toalha_sublimacao/scene_02/last_frame.png
+Não anexe a foto original do produto nem a reference.png da modelo.
+Confira: o primeiro quadro do vídeo gerado deve ser igual ao último frame da cena 2. Se for outra pessoa, rejeite (MODEL_MISMATCH).
+
+=== PROMPT PARA O FLOW === (copie só o que vem abaixo; nada aqui dentro é caminho de arquivo)
+
+OBJETIVO DA CENA:
+Desejo / uso + CTA sutil: reforçar o que é o produto e convidar a dar uma olhada, sem urgência.
+
+REFERÊNCIAS:
+O primeiro quadro do vídeo é o último frame da cena anterior (modo Frames to Video, quadro inicial). O vídeo continua exatamente a partir desse quadro: mesma apresentadora, mesma roupa, mesmo cenário e as mesmas toalhas. A apresentadora não é substituída nem redesenhada.
+
+MODELO:
+A apresentadora é a mulher que aparece no primeiro quadro: cabelo castanho escuro, ondulado, na altura do queixo; camisa branca de manga longa com as mangas dobradas; calça preta; microfone de lapela preto preso na gola. Manter exatamente esse visual do início ao fim. Não trocar de pessoa, de cabelo nem de roupa.
+
+PRODUTO:
+Exatamente 2 toalhas brancas, felpudas, com uma faixa em relevo de linhas paralelas perto da extremidade, sem estampa, sem logo e sem texto. Preservar exatamente como no primeiro quadro. Não alterar cores, quantidade (sempre 2 toalhas), formato, textura ou aparência. Não inventar logos, marcas, estampas ou detalhes.
+
+AMBIENTE:
+Preservar o ambiente do primeiro quadro: ambiente claro e arrumado, com armários e bancada de madeira clara. O mesmo nas 3 cenas, sem objetos extras, produtos concorrentes ou outras toalhas.
+
+AÇÃO:
+Segura as duas toalhas em destaque à frente do corpo e sorri para a câmera enquanto fala.
+
+CÂMERA:
+Medium shot estável, as duas toalhas bem visíveis.
+
+ILUMINAÇÃO:
+Preservar a iluminação do primeiro quadro: luz natural suave e uniforme, tom neutro-quente, sem sombras duras. A mesma nas 3 cenas.
+
+EXPRESSÃO:
+Sorriso simpático e seguro, sem exagero.
+
+FALA:
+Em português brasileiro, tom natural: "Duas toalhas, com um lado de poliéster e outro de algodão. Se você procura toalhas para sublimação, vale a pena dar uma olhada."
+Voz (idêntica em todas as cenas): a mesma apresentadora, mesma voz, mesmo timbre, mesmo sotaque, mesma personalidade, velocidade semelhante, interpretação natural de apresentadora de produtos.
+
+CONTINUIDADE:
+Comece exatamente no quadro inicial (o último frame da cena anterior). A posição corporal, posição das mãos, produto, enquadramento, direção do olhar, iluminação, roupa, cenário e aparência da apresentadora devem permanecer iguais a esse quadro. Só depois do primeiro momento a ação avança, como a mesma gravação contínua.
+
+FORMATO:
+Vertical 9:16.
+
+DURAÇÃO:
+Aproximadamente 8 segundos.
+
+RESTRIÇÕES:
+O produto não altera a aparência da apresentadora, e a apresentadora não altera a aparência do produto. Não afirmar nada além do que está na FALA. Somente português brasileiro. Sem texto sobreposto, sem ícones, selos ou molduras, sem logotipos inventados, sem movimento de câmera brusco, sem zoom excessivo.
