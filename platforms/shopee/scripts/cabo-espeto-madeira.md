@@ -37,14 +37,16 @@ Essa foi a produção com mais idas e voltas até agora, porque o modelo de gera
 1. **1ª tentativa**: haste do espeto saía curta e parecia uma lâmina/faca, não uma haste fina de espeto. Corrigido pedindo haste longa e fina como na referência.
 2. **2ª tentativa**: a correção não mudou o comprimento de forma perceptível, e a haste aparecia saindo dos dois lados do cabo em alguns quadros (fisicamente incorreto).
 3. **3ª tentativa**: regeneração completa do storyboard do zero, com lógica explícita de que o furo/haste ficam sempre na mesma ponta do cabo. Resultado teve nova regressão: o quadro 4 perdeu o produto inteiro, o quadro 7 voltou a mostrar duas pontas em um dos objetos, e o quadro 8 teve haste curta de novo.
-4. **Resolução final**: o usuário corrigiu a imagem em outra ferramenta externa e reenviou pronta, com a haste fina, longa (proporção ~4x o cabo) e saindo de um lado só, consistente nos 8 quadros. Essa versão corrigida foi a usada para gerar o vídeo final.
+4. **Resolução do storyboard**: o usuário corrigiu a imagem em outra ferramenta externa e reenviou pronta, com a haste fina, longa (proporção ~4x o cabo) e saindo de um lado só, consistente nos 8 quadros. Essa versão corrigida foi usada para gerar o 1º vídeo.
+5. **Erro no 1º vídeo gerado**: mesmo com o storyboard corrigido, o vídeo (Seedance) introduziu uma pontinha de metal extra na base do cabo em alguns frames — o espeto voltava a aparecer com "duas pontas". Corrigido removendo essa pontinha da imagem de referência (nova passagem de correção) e regenerando o vídeo do zero. O 2º vídeo foi conferido frame a frame (6 frames extraídos e inspecionados) antes da entrega final, confirmando a base do cabo limpa em todos eles.
 
 ## Entregáveis
 
-- Storyboard corrigido pelo usuário (final, aprovado): https://d2ol7oe51mr4n9.cloudfront.net/user_3IMjRh4yp5Ie5bgUzXTv4ASGWC5/25168611-7406-4d7e-94ff-1dc5ef9b0577.png
-- Vídeo silencioso (bruto): https://d8j0ntlcm91z4.cloudfront.net/user_3IMjRh4yp5Ie5bgUzXTv4ASGWC5/hf_20261014_140836_b7457ac5-cfb9-486e-a699-89cf1588981e.mp4
+- Storyboard corrigido pelo usuário (base para o 1º vídeo): https://d2ol7oe51mr4n9.cloudfront.net/user_3IMjRh4yp5Ie5bgUzXTv4ASGWC5/25168611-7406-4d7e-94ff-1dc5ef9b0577.png
+- Storyboard com a pontinha da base removida (final, usado no vídeo entregue): https://d8j0ntlcm91z4.cloudfront.net/user_3IMjRh4yp5Ie5bgUzXTv4ASGWC5/hf_20261014_145414_bf0247fd-409f-49ee-a34b-4397922dd6ed.png
+- Vídeo silencioso (bruto, versão final): https://d8j0ntlcm91z4.cloudfront.net/user_3IMjRh4yp5Ie5bgUzXTv4ASGWC5/hf_20261014_151755_fd11d837-a1fa-4c9d-9a31-89fe5eceee84.mp4
 - Locução (Ainsley): https://d8j0ntlcm91z4.cloudfront.net/user_3IMjRh4yp5Ie5bgUzXTv4ASGWC5/hf_20261014_132156_cef34389-20c8-4119-82de-220bcb611585.mp3
-- **Vídeo final (H.264/AAC, com locução):** https://d2ol7oe51mr4n9.cloudfront.net/user_3IMjRh4yp5Ie5bgUzXTv4ASGWC5/67d7f582-1081-4bfb-93d6-9093e69c291e.mp4
+- **Vídeo final (H.264/AAC, com locução):** https://d2ol7oe51mr4n9.cloudfront.net/user_3IMjRh4yp5Ie5bgUzXTv4ASGWC5/58207254-18ab-4374-bb50-079626b1e647.mp4
 
 ## Observação
 
